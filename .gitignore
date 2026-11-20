@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# 工作区里与本项目无关的既有目录（另一个仓库），不要带上
+traceless/

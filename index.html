@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1"
+    />
+    <meta name="theme-color" content="#07080d" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eef1f7" media="(prefers-color-scheme: light)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>2048 · 军 → 刘 No.5</title>
+    <link rel="stylesheet" href="./src/styles/main.css" />
+  </head>
+  <body>
+    <main class="app" id="app">
+      <div class="scene" aria-hidden="true">
+        <span class="scene__blob scene__blob--a"></span>
+        <span class="scene__blob scene__blob--b"></span>
+        <span class="scene__blob scene__blob--c"></span>
+        <span class="scene__sheen"></span>
+      </div>
+
+      <div class="shell">
+        <header class="head">
+          <div class="brand">
+            <div class="brand__mark" aria-hidden="true">合</div>
+            <div class="brand__meta">
+              <h1 class="brand__title">2048</h1>
+              <p class="brand__sub" id="chain-caption">军 → 赢² → 水³ → Lec → 刘 No.5</p>
+            </div>
+          </div>
+          <div class="scores">
+            <div class="score" id="score-box">
+              <span class="score__k">得分</span>
+              <strong class="score__v" id="score">0</strong>
+            </div>
+            <div class="score score--best" id="best-box">
+              <span class="score__k">最高</span>
+              <strong class="score__v" id="best">0</strong>
+            </div>
+          </div>
+        </header>
+
+        <section class="stage">
+          <div
+            class="board"
+            id="board"
+            role="application"
+            aria-label="2048 棋盘：上下左右滑动，或用键盘方向键移动方块"
+          >
+            <div class="board__grid" id="grid" aria-hidden="true"></div>
+            <div class="board__tiles" id="tiles"></div>
+            <div class="board__fx" id="fx" aria-hidden="true"></div>
+          </div>
+          <p class="hint" id="hint">滑动或按方向键 · 两枚同级相碰即可合成</p>
+        </section>
+
+        <footer class="bar">
+          <button class="pill pill--primary" id="btn-new" type="button">新游戏</button>
+          <button class="pill" id="btn-undo" type="button" disabled>撤销</button>
+          <button class="pill pill--ghost" id="btn-guide" type="button">图鉴</button>
+        </footer>
+      </div>
+
+      <p class="sr-only" id="live" role="status" aria-live="polite"></p>
+
+      <div class="overlay" id="overlay" hidden aria-hidden="true">
+        <div class="overlay__scrim" id="overlay-scrim"></div>
+        <div class="panel panel--overlay" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
+          <p class="panel__eyebrow" id="overlay-eyebrow"></p>
+          <h2 class="panel__title" id="overlay-title"></h2>
+          <p class="panel__text" id="overlay-text"></p>
+          <div class="panel__stats" id="overlay-stats"></div>
+          <div class="panel__actions" id="overlay-actions"></div>
+        </div>
+        <div class="burst" id="burst" aria-hidden="true"></div>
+      </div>
+
+      <div class="sheet" id="sheet" hidden aria-hidden="true">
+        <div class="sheet__scrim" id="sheet-scrim"></div>
+        <div class="panel panel--sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+          <div class="sheet__grip" aria-hidden="true"></div>
+          <div class="sheet__head">
+            <h2 class="panel__title panel__title--sm" id="sheet-title">合成图鉴</h2>
+            <button class="sheet__close" id="sheet-close" type="button" aria-label="关闭">✕</button>
+          </div>
+          <p class="panel__text" id="sheet-sub"></p>
+          <div class="chain" id="chain"></div>
+          <button class="pill pill--primary pill--wide" id="sheet-done" type="button">开始合成</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- INLINE_SCRIPT -->
+  </body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "game-2048-jun",
+  "private": true,
+  "version": "1.0.0",
+  "description": "2048 主题版：军 → 赢² → 水³ → Lec → 刘 No.5",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "test": "node --test --no-warnings tests/*.test.ts",
+    "verify": "npm run typecheck && npm test && node scripts/verify-dist.mjs",
+    "pack": "node scripts/pack.mjs"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^24.19.2",
+    "esbuild": "^0.28.2",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.3"
+  }
+}
