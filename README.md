@@ -4,10 +4,10 @@
 每次打开先看到「疯狂水立方」开场界面，点开始（或按 Enter / Space）进入棋局。
 合出 OLD FIVE 只是**假通关**——真正的通关门道，藏在词条之间，留给你自己发现。
 
-## 下载（v2.2.1）
+## 下载（v2.2.2）
 
 - **在线玩**：[https://lhy220402.github.io/crazy-water-cube/](https://lhy220402.github.io/crazy-water-cube/)（GitHub Pages，等同单文件版）。
-- **单文件版**：下载 `疯狂水立方.html`（约 95 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
+- **单文件版**：下载 `疯狂水立方.html`（约 98 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
 - **发行版**：[GitHub Releases](https://github.com/Lhy220402/crazy-water-cube/releases) · [Gitee 发行版](https://gitee.com/leng-haoyuan/jun2048/releases)（含单文件版、源码包、玩法说明、SHA256 校验和）。
 - **源码**：发行版里的 `疯狂水立方-source.tar.gz`，或 `git clone` 本仓库；`npm install && npm run build` 重新打包。
 
@@ -59,6 +59,7 @@
 - 图鉴两页：「合成链」（固定链 + 词条入口 + 特殊配方）、「词条」（已收集卡片）。收录跨局累积，重新开局不清空，撤销不回退。
 - 撤销最多 20 步；最高分 / 棋局 / 图鉴自动存在浏览器本地，关掉再打开接着玩。
 - 底栏「🔊 / 🔇」按钮开关合成音效，偏好会被记住（`jun2048.sound`）。
+- 网站图标：三个水滴水滴（Noto Emoji）摆成正三角、透明底，内联 SVG + PNG 兜底，不引外部图片。
 - 键盘：方向键 / WASD 移动，`Z` 撤销，`Esc` 关弹窗；开场界面按 Enter / Space 进入。
 - 底栏「关于」：玩法简介 + 在线玩 / Gitee / GitHub 链接；「◐」按钮切换外观（跟随系统 → 浅色 → 深色，记住偏好）。
 
@@ -100,7 +101,7 @@ src/
   main.ts       入口
 index.html      页面骨架（含开场界面与内联占位）
 scripts/        build / dev / verify-dist / pack / audio / pages
-tests/          engine.test.ts（33）+ audio.test.ts（3）+ ui.test.ts（32）
+tests/          engine.test.ts（33）+ audio.test.ts（3）+ ui.test.ts（33）
 docs/           交接文档 / 新对话提示词 / 设计文档
 ```
 
@@ -110,7 +111,7 @@ docs/           交接文档 / 新对话提示词 / 设计文档
 npm install
 npm run build     # → dist/2048.html
 npm run dev       # 本地预览，手机同网络可访问
-npm run verify    # 类型检查 + 68 测试 + 单文件自检
+npm run verify    # 类型检查 + 69 测试 + 单文件自检
 npm run pack      # 发布到 /sdcard/Download/DSH-Go/
 npm run pages     # 单文件版发布到 GitHub Pages（gh-pages 分支）
 ```

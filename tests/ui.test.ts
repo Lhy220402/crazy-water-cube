@@ -813,3 +813,17 @@ test('声音开关：默认开启，点击静音并持久化，重开恢复', as
   assert.equal(h2.win.localStorage.getItem('jun2048.sound'), 'on');
   h2.close();
 });
+
+test('网站图标：三个水滴正三角 favicon，SVG + PNG 都是内联 data URI', async () => {
+  const h = await boot();
+  const links = Array.from(h.doc.querySelectorAll<HTMLLinkElement>('link[rel="icon"]'));
+  assert.equal(links.length, 2, '应有 SVG 主图标 + PNG 兜底');
+  assert.ok(links.some((link) => link.getAttribute('href')?.startsWith('data:image/svg+xml;base64,')));
+  assert.ok(links.some((link) => link.getAttribute('href')?.startsWith('data:image/png;base64,')));
+  for (const link of links) {
+    const href = link.getAttribute('href') ?? '';
+    assert.equal(href.startsWith('data:'), true, 'favicon 必须是内联 data URI');
+    assert.equal(href.includes('http'), false, 'favicon 不能引外部资源');
+  }
+  h.close();
+});

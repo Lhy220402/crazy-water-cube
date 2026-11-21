@@ -68,7 +68,6 @@ function assemble(template, { css, js }) {
       '    <meta property="og:title" content="疯狂水立方 · 真通关了吗？" />',
       '    <meta property="og:description" content="滑动合成，合出 OLD FIVE 只是假通关——真正的结局藏在词条之间。" />',
       '    <meta property="og:type" content="website" />',
-      '    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2718%27 fill=%27%231899d6%27/%3E%3Ctext x=%2732%27 y=%2742%27 font-size=%2728%27 font-family=%27sans-serif%27 font-weight=%27700%27 fill=%27white%27 text-anchor=%27middle%27%3E%E6%B0%B4%3C/text%3E%3C/svg%3E" />',
       '</head>',
     ].join('\n'),
   );
