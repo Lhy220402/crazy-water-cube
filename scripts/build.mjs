@@ -64,11 +64,11 @@ function assemble(template, { css, js }) {
   html = html.replace(
     '</head>',
     () => [
-      '    <meta name="description" content="2048 主题版：两个「军」合成「赢²」，一路合到「刘 No.5」。手机浏览器直接玩。" />',
-      '    <meta property="og:title" content="2048 · 军 → 赢² → 水³ → Lec → 刘 No.5" />',
-      '    <meta property="og:description" content="滑动合成，看看谁先合出刘 No.5。" />',
+      '    <meta name="description" content="疯狂水立方：水主题 2048 合成小游戏。军 → 赢² → 水³ → Lec → OLD FIVE，真通关了吗？手机浏览器直接玩。" />',
+      '    <meta property="og:title" content="疯狂水立方 · 真通关了吗？" />',
+      '    <meta property="og:description" content="滑动合成，合出 OLD FIVE 只是假通关——真正的结局藏在词条之间。" />',
       '    <meta property="og:type" content="website" />',
-      '    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2718%27 fill=%27%234aa6ff%27/%3E%3Ctext x=%2732%27 y=%2742%27 font-size=%2728%27 font-family=%27sans-serif%27 font-weight=%27700%27 fill=%27white%27 text-anchor=%27middle%27%3E%E5%90%88%3C/text%3E%3C/svg%3E" />',
+      '    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2718%27 fill=%27%231899d6%27/%3E%3Ctext x=%2732%27 y=%2742%27 font-size=%2728%27 font-family=%27sans-serif%27 font-weight=%27700%27 fill=%27white%27 text-anchor=%27middle%27%3E%E6%B0%B4%3C/text%3E%3C/svg%3E" />',
       '</head>',
     ].join('\n'),
   );

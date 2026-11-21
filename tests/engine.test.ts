@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TIERS, createConfig } from '../src/game/config.ts';
+import { TIERS, allEntries, createConfig, entryById } from '../src/game/config.ts';
+import { LORE_FALLBACK, loreOf } from '../src/game/lore.ts';
+import { buffMultiplier, parseBuffs, tickBuffs } from '../src/game/buffs.ts';
 import {
   canMove,
   cellIndex,
@@ -12,18 +14,24 @@ import {
   type GameState,
 } from '../src/game/engine.ts';
 
+/** 棋盘格规格：数字 = 普通等级；[rank, variant] = 词条/特殊产物；null = 空 */
+type CellSpec = number | [number, string] | null;
+
 /** 用等级矩阵造局面（null = 空），从左上到右下 */
-function board(rows: (number | null)[][], config = createConfig()): GameState {
+function board(rows: CellSpec[][], config = createConfig()): GameState {
   assert.equal(rows.length, config.size);
   const cells: GameState['cells'] = new Array(config.size * config.size).fill(null);
   let id = 1;
   rows.forEach((row, r) => {
     assert.equal(row.length, config.size);
-    row.forEach((rank, c) => {
-      if (rank !== null) cells[cellIndex(config, r, c)] = { id: id++, rank };
+    row.forEach((spec, c) => {
+      if (spec === null) return;
+      const [rank, variant] = typeof spec === 'number' ? [spec, undefined] : spec;
+      cells[cellIndex(config, r, c)] =
+        variant === undefined ? { id: id++, rank } : { id: id++, rank, variant };
     });
   });
-  return { cells, score: 0, moves: 0, nextId: id, won: false, over: false };
+  return { cells, score: 0, moves: 0, nextId: id, won: false, trueWon: false, buffs: [], over: false };
 }
 
 function ranks(state: GameState): (number | null)[][] {
@@ -45,7 +53,7 @@ function fixedRng(value = 0): () => number {
 test('默认体系与生成规则符合预期', () => {
   assert.deepEqual(
     TIERS.map((tier) => tier.name),
-    ['军', '赢²', '水³', 'Lec', '刘 No.5'],
+    ['军', '赢²', '水³', 'Lec', 'OLD FIVE'],
   );
   const config = createConfig();
   assert.equal(config.size, 4);
@@ -54,14 +62,19 @@ test('默认体系与生成规则符合预期', () => {
     config.spawn.map((rule) => rule.rank),
     [0, 1],
   );
+  // 等级签名保持兼容（liu 是存档身份，不随改名变化）
+  assert.equal(config.tiersSignature, 'jun|win|water|lec|liu');
 });
 
-test('开局有两个方块且分数为 0', () => {
+test('开局有两个方块且分数为 0，无增益未通关', () => {
   const config = createConfig();
   const state = createGame(config, fixedRng(0));
   assert.equal(state.cells.filter(Boolean).length, 2);
   assert.equal(state.score, 0);
   assert.equal(state.over, false);
+  assert.equal(state.won, false);
+  assert.equal(state.trueWon, false);
+  assert.deepEqual(state.buffs, []);
   const ids = state.cells.filter(Boolean).map((tile) => tile!.id);
   assert.equal(new Set(ids).size, 2);
 });
@@ -83,7 +96,6 @@ test('两枚「军」合成「赢²」，只计分一次', () => {
   assert.equal(result.merges[0]!.rank, 1);
   assert.equal(result.merges[0]!.cell, cellIndex(config, 0, 0));
   assert.equal(result.scoreGain, TIERS[1]!.points);
-  // 合成后还会生成一个新方块（落在最后一个空格，等级 0）
   assert.equal(ranks(result.state)[0]![0], 1);
   assert.equal(result.state.score, TIERS[1]!.points);
   assert.equal(result.state.moves, 1);
@@ -125,7 +137,7 @@ test('四个方向都能正确合并', () => {
   const config = createConfig();
   const cases: {
     dir: Direction;
-    rows: (number | null)[][];
+    rows: CellSpec[][];
     expect: [number, number, number];
   }[] = [
     {
@@ -177,7 +189,7 @@ test('四个方向都能正确合并', () => {
   }
 });
 
-test('完整合成链：军 → 赢² → 水³ → Lec → 刘 No.5', () => {
+test('完整合成链：军 → 赢² → 水³ → Lec → OLD FIVE', () => {
   const config = createConfig();
   let state = board(
     [
@@ -190,14 +202,11 @@ test('完整合成链：军 → 赢² → 水³ → Lec → 刘 No.5', () => {
   );
   const expected = [1, 2, 3, 4];
   for (const target of expected) {
-    const previous = state;
-    const merged = move(previous, 'left', config, fixedRng(0));
+    const merged = move(state, 'left', config, fixedRng(0));
     assert.equal(merged.merges[0]!.rank, target, `应合成 ${TIERS[target]!.name}`);
-    // 把结果整理成「同行相邻两枚」，继续下一级合成
-    const rank = target;
     state = board(
       [
-        [rank, rank, null, null],
+        [target, target, null, null],
         [null, null, null, null],
         [null, null, null, null],
         [null, null, null, null],
@@ -209,8 +218,9 @@ test('完整合成链：军 → 赢² → 水³ → Lec → 刘 No.5', () => {
   assert.equal(top.rank, 4);
 });
 
-test('终点等级不再合并，也不会误判为可移动', () => {
-  const config = createConfig();
+test('关掉词条模式时，终点两枚不合并（旧规则）', () => {
+  const config = createConfig({ codex: null });
+  assert.equal(config.codexRank, -1);
   const state = board(
     [
       [null, 4, 4, null],
@@ -221,13 +231,424 @@ test('终点等级不再合并，也不会误判为可移动', () => {
     config,
   );
   const result = move(state, 'left', config, fixedRng(0));
-  assert.equal(result.moved, true); // 方块确实滑动了
+  assert.equal(result.moved, true);
   assert.equal(result.merges.length, 0);
   assert.equal(result.scoreGain, 0);
   assert.deepEqual(ranks(result.state)[0]!.slice(0, 2), [4, 4]);
 });
 
-test('合出终点等级时 justWon 只触发一次', () => {
+test('两枚 OLD FIVE 合成后随机抽一条词条', () => {
+  const config = createConfig();
+  const state = board(
+    [
+      [4, 4, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    config,
+  );
+  const result = move(state, 'left', config, fixedRng(0));
+  assert.equal(result.moved, true);
+  assert.equal(result.merges.length, 1);
+  assert.equal(result.merges[0]!.rank, config.codexRank);
+  assert.equal(result.merges[0]!.gained, config.codex!.points);
+  assert.equal(result.codexDraws.length, 1);
+  assert.equal(result.codexDraws[0]!.entryId, 'sui'); // rng=0 抽权重最高的第一条
+  assert.equal(result.codexDraws[0]!.name, '隋');
+  const produced = result.state.cells.find((tile) => tile?.rank === config.codexRank);
+  assert.ok(produced);
+  assert.equal(produced.variant, 'sui');
+  assert.equal(result.scoreGain, config.codex!.points);
+});
+
+test('任意两条词条都能合（稀有度不影响配对），结果全池随机', () => {
+  const config = createConfig();
+  // 普通「隋」 + 传说「记」：跨稀有度照样合
+  const state = board(
+    [
+      [[5, 'sui'], [5, 'ji'], null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    config,
+  );
+  // 权重总和 31；0.5×31=15.5 落在「红梅」
+  const result = move(state, 'left', config, fixedRng(0.5));
+  assert.equal(result.moved, true);
+  assert.equal(result.merges[0]!.rank, config.codexRank);
+  assert.equal(result.codexDraws.length, 1);
+  assert.equal(result.codexDraws[0]!.entryId, 'hongmei');
+  const produced = result.state.cells.find((tile) => tile?.rank === config.codexRank);
+  assert.equal(produced?.variant, 'hongmei');
+});
+
+test('词条按权重随机，允许重复，14 条都能抽到', () => {
+  const config = createConfig();
+  const seen = new Map<string, number>();
+  for (let i = 0; i < 500; i += 1) {
+    const state = board(
+      [
+        [4, 4, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      config,
+    );
+    const result = move(state, 'left', config, fixedRng((i % 50) / 50));
+    const draw = result.codexDraws[0];
+    assert.ok(draw);
+    seen.set(draw.entryId, (seen.get(draw.entryId) ?? 0) + 1);
+  }
+  assert.deepEqual([...seen.keys()].sort(), [
+    'bayi',
+    'doubao',
+    'eyu-qi',
+    'eyu-shi-jun',
+    'fuli',
+    'hongmei',
+    'ji',
+    'jinshan',
+    'li',
+    'na',
+    'sui',
+    'sui-ring',
+    'xiaoming',
+    'yanzi',
+  ]);
+  for (const count of seen.values()) assert.ok(count > 0);
+  // 普通「隋」权重最高，抽到次数应明显多于传说「记」
+  assert.ok(seen.get('sui')! > seen.get('ji')!);
+});
+
+test('特殊配方：Li + Na → 李娜（+128，×2/8步，和隋军同一梯队）', () => {
+  const config = createConfig();
+  const state = board(
+    [
+      [[5, 'li'], [5, 'na'], null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    config,
+  );
+  const result = move(state, 'left', config, fixedRng(0));
+  assert.equal(result.moved, true);
+  assert.equal(result.merges.length, 1);
+  const merge = result.merges[0]!;
+  assert.equal(merge.variant, 'lina');
+  assert.equal(merge.rank, config.codexRank);
+  assert.equal(merge.gained, 128);
+  assert.equal(result.codexDraws.length, 0, '特殊产物不是随机抽取');
+  assert.deepEqual(result.state.buffs, [
+    { id: 'lina', label: '李娜·夺冠', mult: 2, movesLeft: 8 },
+  ]);
+  assert.equal(result.justTrueWon, false);
+
+  // 无序：Na 撞 Li 也一样触发
+  const reversed = move(
+    board(
+      [
+        [null, null, [5, 'na'], [5, 'li']],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      config,
+    ),
+    'right',
+    config,
+    fixedRng(0),
+  );
+  assert.equal(reversed.merges[0]!.variant, 'lina');
+
+  // 李娜也是词条级：可以和任意词条继续合成
+  const followUp = move(
+    board(
+      [
+        [[5, 'lina'], [5, 'bayi'], null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      config,
+    ),
+    'left',
+    config,
+    fixedRng(0),
+  );
+  assert.equal(followUp.merges.length, 1);
+  assert.equal(followUp.codexDraws.length, 1);
+  assert.equal(followUp.merges[0]!.gained, 64);
+});
+
+test('每条词条与特殊产物都有解释文案（图鉴池 14 + 特殊产物 4）', () => {
+  const config = createConfig();
+  assert.equal(config.codex!.entries.length, 14);
+  assert.equal(config.codex!.specials.length, 4);
+  const entries = allEntries(config);
+  assert.equal(entries.length, 18);
+  for (const entry of entries) {
+    const text = loreOf(entry.id);
+    assert.ok(text.length > 0, `${entry.id} 缺解释`);
+    assert.notEqual(text, LORE_FALLBACK, `${entry.id} 还是兜底句`);
+    assert.equal(text.includes('占位'), false, `${entry.id} 还是占位`);
+  }
+});
+
+test('特殊配方：隋 + 军 → 隋军（+64，挂 ×2/8步 增益）', () => {
+  const config = createConfig();
+  const state = board(
+    [
+      [[5, 'sui'], 0, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    config,
+  );
+  const result = move(state, 'left', config, fixedRng(0));
+  assert.equal(result.merges.length, 1);
+  const merge = result.merges[0]!;
+  assert.equal(merge.rank, config.codexRank);
+  assert.equal(merge.variant, 'sui-jun');
+  assert.equal(merge.gained, 64);
+  assert.equal(result.codexDraws.length, 0, '特殊产物不是随机抽取');
+  assert.deepEqual(result.state.buffs, [
+    { id: 'sui-jun', label: '隋军·蓄水', mult: 2, movesLeft: 8 },
+  ]);
+  assert.equal(result.justTrueWon, false);
+});
+
+test('特殊配方无序：军撞隋也一样；配方优先于普通判定', () => {
+  const config = createConfig();
+  const state = board(
+    [
+      [0, [5, 'sui'], 0, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    config,
+  );
+  const result = move(state, 'left', config, fixedRng(0));
+  // 队头 军+隋 先触发配方，剩下的军单独留在后面
+  assert.equal(result.merges.length, 1);
+  assert.equal(result.merges[0]!.variant, 'sui-jun');
+  assert.deepEqual(ranks(result.state)[0]!.slice(0, 2), [5, 0]);
+});
+
+test('特殊配方：圈隋 + 军 → 隋军·环（+128，×3/12步）', () => {
+  const config = createConfig();
+  const state = board(
+    [
+      [[5, 'sui-ring'], 0, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    config,
+  );
+  const result = move(state, 'left', config, fixedRng(0));
+  assert.equal(result.merges[0]!.variant, 'sui-jun-ring');
+  assert.equal(result.merges[0]!.gained, 128);
+  assert.deepEqual(result.state.buffs, [
+    { id: 'sui-jun-ring', label: '隋军·洪峰', mult: 3, movesLeft: 12 },
+  ]);
+});
+
+test('特殊配方：记 + 赢² → 记赢赢，真通关只触发一次，永久 ×2', () => {
+  const config = createConfig();
+  const state = board(
+    [
+      [[5, 'ji'], 1, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    config,
+  );
+  const first = move(state, 'left', config, fixedRng(0));
+  assert.equal(first.merges[0]!.variant, 'ji-ying-ying');
+  assert.equal(first.merges[0]!.gained, 256);
+  assert.equal(first.justTrueWon, true);
+  assert.equal(first.state.trueWon, true);
+  assert.deepEqual(first.state.buffs, [
+    { id: 'ji-ying-ying', label: '记赢赢·长赢', mult: 2, movesLeft: -1 },
+  ]);
+
+  // 真通关后再合出记赢赢，不重复触发；永久增益仍在
+  const again = move(
+    { ...first.state, cells: board([[[5, 'ji'], 1, null, null], [null, null, null, null], [null, null, null, null], [null, null, null, null]], config).cells },
+    'left',
+    config,
+    fixedRng(0),
+  );
+  assert.equal(again.justTrueWon, false);
+  assert.equal(again.state.trueWon, true);
+  assert.equal(again.state.buffs.filter((buff) => buff.id === 'ji-ying-ying').length, 2);
+});
+
+test('记 + 军 不合成；隋 + 隋 走普通词条抽取', () => {
+  const config = createConfig();
+  const noRecipe = move(
+    board(
+      [
+        [null, [5, 'ji'], 0, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      config,
+    ),
+    'left',
+    config,
+    fixedRng(0),
+  );
+  assert.equal(noRecipe.moved, true);
+  assert.equal(noRecipe.merges.length, 0);
+
+  const suiPair = move(
+    board(
+      [
+        [[5, 'sui'], [5, 'sui'], null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      config,
+    ),
+    'left',
+    config,
+    fixedRng(0),
+  );
+  assert.equal(suiPair.merges.length, 1);
+  assert.equal(suiPair.codexDraws.length, 1);
+  assert.equal(suiPair.codexDraws[0]!.entryId, 'sui');
+});
+
+test('特殊产物也是词条级：可以和任意词条继续合成', () => {
+  const config = createConfig();
+  const result = move(
+    board(
+      [
+        [[5, 'sui-jun'], [5, 'eyu-qi'], null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      config,
+    ),
+    'left',
+    config,
+    fixedRng(0),
+  );
+  assert.equal(result.merges.length, 1);
+  assert.equal(result.codexDraws.length, 1);
+  assert.equal(result.merges[0]!.gained, 64);
+});
+
+test('增益让得分翻倍，并逐步倒数到过期', () => {
+  const config = createConfig();
+  const state = {
+    ...board(
+      [
+        [0, 0, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      config,
+    ),
+    buffs: [{ id: 'sui-jun', label: '隋军·蓄水', mult: 2, movesLeft: 2 }],
+  };
+  const first = move(state, 'left', config, fixedRng(0.99));
+  assert.equal(first.scoreGain, 8); // 4 × 2
+  assert.equal(first.state.buffs[0]!.movesLeft, 1);
+  // 再走一步有效移动（右下角的生成块上移），增益到期移除
+  const second = move(first.state, 'up', config, fixedRng(0.99));
+  assert.equal(second.moved, true);
+  assert.deepEqual(second.state.buffs, []);
+});
+
+test('新增益创建当步不生效也不消耗，下一步才开始', () => {
+  const config = createConfig();
+  const state = board(
+    [
+      [[5, 'sui'], 0, null, null],
+      [0, 0, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    config,
+  );
+  const result = move(state, 'left', config, fixedRng(0));
+  // 隋军 +64（无倍率），同一步的 军×2 仍是 +4 而不是 +8
+  assert.equal(result.scoreGain, 64 + 4);
+  assert.equal(result.state.buffs[0]!.movesLeft, 8);
+  // 下一步合成开始吃 ×2
+  const next = move(
+    { ...result.state, cells: board([[0, 0, null, null], [null, null, null, null], [null, null, null, null], [null, null, null, null]], config).cells },
+    'left',
+    config,
+    fixedRng(0),
+  );
+  assert.equal(next.scoreGain, 8);
+  assert.equal(next.state.buffs[0]!.movesLeft, 7);
+});
+
+test('多个增益乘算叠加', () => {
+  const config = createConfig();
+  const state = {
+    ...board(
+      [
+        [0, 0, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      config,
+    ),
+    buffs: [
+      { id: 'a', label: 'a', mult: 2, movesLeft: 3 },
+      { id: 'b', label: 'b', mult: 3, movesLeft: 5 },
+    ],
+  };
+  const result = move(state, 'left', config, fixedRng(0));
+  assert.equal(result.scoreGain, 24); // 4 × 2 × 3
+  assert.equal(result.state.buffs[0]!.movesLeft, 2);
+  assert.equal(result.state.buffs[1]!.movesLeft, 4);
+});
+
+test('增益工具：倍率 / 倒数 / 存档校验', () => {
+  assert.equal(buffMultiplier([]), 1);
+  assert.equal(
+    buffMultiplier([
+      { id: 'a', label: 'a', mult: 2, movesLeft: 1 },
+      { id: 'b', label: 'b', mult: 3, movesLeft: -1 },
+    ]),
+    6,
+  );
+  assert.deepEqual(
+    tickBuffs([
+      { id: 'a', label: 'a', mult: 2, movesLeft: 1 },
+      { id: 'b', label: 'b', mult: 3, movesLeft: 2 },
+      { id: 'c', label: 'c', mult: 2, movesLeft: -1 },
+    ]),
+    [
+      { id: 'b', label: 'b', mult: 3, movesLeft: 1 },
+      { id: 'c', label: 'c', mult: 2, movesLeft: -1 },
+    ],
+  );
+  assert.deepEqual(parseBuffs(null), []);
+  assert.deepEqual(parseBuffs([{ id: 'x', label: 'x', mult: 2, movesLeft: 3 }, { bad: true }]), [
+    { id: 'x', label: 'x', mult: 2, movesLeft: 3 },
+  ]);
+});
+
+test('合出 OLD FIVE 时假通关 justWon 只触发一次', () => {
   const config = createConfig();
   const before = board(
     [
@@ -241,49 +662,42 @@ test('合出终点等级时 justWon 只触发一次', () => {
   const first = move(before, 'left', config, fixedRng(0));
   assert.equal(first.justWon, true);
   assert.equal(first.state.won, true);
+  assert.equal(first.state.trueWon, false, 'OLD FIVE 只是假通关');
 
-  const second = move(
-    board(
-      [
-        [3, 3, null, null],
-        [null, null, null, null],
-        [null, null, null, null],
-        [null, null, null, null],
-      ],
-      config,
-    ),
+  const again = move(
+    { ...first.state, cells: board([[3, 3, null, null], [null, null, null, null], [null, null, null, null], [null, null, null, null]], config).cells },
     'left',
     config,
     fixedRng(0),
   );
-  assert.equal(second.justWon, true); // 单独测试的初态没通关过
-
-  // 已经通关的局面再合出终点，不再重复触发
-  const afterWin = { ...first.state, won: true };
-  const again = move(afterWin, 'left', config, fixedRng(0));
-  if (again.moved) assert.equal(again.justWon, false);
+  assert.equal(again.moved, true);
+  assert.equal(again.justWon, false);
 });
 
-test('无效移动不推进回合', () => {
+test('无效移动不推进回合、不消耗增益', () => {
   const config = createConfig();
-  const state = board(
-    [
-      [0, 1, 2, 3],
-      [4, 0, 1, 2],
-      [3, 4, 0, 1],
-      [2, 3, 4, 0],
-    ],
-    config,
-  );
+  const state = {
+    ...board(
+      [
+        [0, 1, 2, 3],
+        [4, 0, 1, 2],
+        [3, 4, 0, 1],
+        [2, 3, 4, 0],
+      ],
+      config,
+    ),
+    buffs: [{ id: 'a', label: 'a', mult: 2, movesLeft: 3 }],
+  };
   const result = move(state, 'left', config, fixedRng(0));
   assert.equal(result.moved, false);
   assert.equal(result.state, state);
   assert.equal(result.spawn, null);
+  assert.equal(result.state.buffs[0]!.movesLeft, 3);
 });
 
-test('满盘无解时判定结束', () => {
+test('满盘无解时判定结束；特殊配方相邻也算有路可走', () => {
   const config = createConfig();
-  const state = board(
+  const dead = board(
     [
       [0, 1, 2, 3],
       [4, 0, 1, 2],
@@ -292,7 +706,19 @@ test('满盘无解时判定结束', () => {
     ],
     config,
   );
-  assert.equal(canMove(state, config), false);
+  assert.equal(canMove(dead, config), false);
+
+  // 把军右边的一枚换成「隋」：与军构成配方，死局复活
+  const revived = board(
+    [
+      [0, [5, 'sui'], 2, 3],
+      [4, 0, 1, 2],
+      [3, 4, 0, 1],
+      [2, 3, 4, 0],
+    ],
+    config,
+  );
+  assert.equal(canMove(revived, config), true);
 
   const withEmpty = board(
     [
@@ -306,8 +732,33 @@ test('满盘无解时判定结束', () => {
   assert.equal(canMove(withEmpty, config), true);
 });
 
-test('该等级与终点判断：相邻终点对不提供可移动性', () => {
+test('词条模式下的可移动判定：词条对也能继续合', () => {
   const config = createConfig();
+  const state = board(
+    [
+      [[5, 'sui'], [5, 'ji'], 0, 1],
+      [2, 3, 4, 0],
+      [1, 2, 3, 4],
+      [0, 1, 2, 3],
+    ],
+    config,
+  );
+  assert.equal(canMove(state, config), true);
+
+  const blocked = board(
+    [
+      [0, 1, 2, 3],
+      [4, 0, 1, 2],
+      [3, 4, 0, 1],
+      [2, 3, 4, 0],
+    ],
+    config,
+  );
+  assert.equal(canMove(blocked, config), false);
+});
+
+test('关掉词条模式时，相邻的终点对不提供可移动性', () => {
+  const config = createConfig({ codex: null });
   const state = board(
     [
       [4, 4, 0, 1],
@@ -320,15 +771,24 @@ test('该等级与终点判断：相邻终点对不提供可移动性', () => {
   assert.equal(canMove(state, config), false);
 });
 
-test('存档往返一致，坏档与旧配置被拒绝', () => {
+test('存档往返一致（v3 含增益与真通关），坏档与旧配置被拒绝', () => {
   const config = createConfig();
-  const state = createGame(config, fixedRng(0.42));
+  const state = {
+    ...createGame(config, fixedRng(0.42)),
+    won: true,
+    trueWon: true,
+    buffs: [{ id: 'ji-ying-ying', label: '记赢赢·长赢', mult: 2, movesLeft: -1 }],
+  };
   const saved = JSON.parse(JSON.stringify(serialize(state, config)));
+  assert.equal(saved.v, 3);
   const restored = deserialize(saved, config);
   assert.ok(restored);
   assert.equal(restored.score, state.score);
   assert.equal(restored.moves, state.moves);
+  assert.equal(restored.trueWon, true);
+  assert.deepEqual(restored.buffs, state.buffs);
   assert.deepEqual(ranks(restored), ranks(state));
+  assert.deepEqual(saved.variants, state.cells.map((tile) => tile?.variant ?? null));
 
   assert.equal(deserialize({ ...saved, size: 5 }, config), null);
   assert.equal(deserialize({ ...saved, sig: 'other' }, config), null);
@@ -336,6 +796,51 @@ test('存档往返一致，坏档与旧配置被拒绝', () => {
   assert.equal(deserialize({ ...saved, score: -1 }, config), null);
   assert.equal(deserialize(null, config), null);
   assert.equal(deserialize('nope', config), null);
+});
+
+test('词条存档校验：未知词条 id 判坏档；v1/v2 旧档兼容', () => {
+  const config = createConfig();
+  const base = {
+    v: 3,
+    size: 4,
+    sig: config.tiersSignature,
+    ranks: [5, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    variants: ['sui', null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    score: 10,
+    moves: 3,
+    won: true,
+    trueWon: false,
+    buffs: [],
+  };
+  assert.ok(deserialize(base, config));
+  // 旧池子里的词条 id 已不存在 → 坏档
+  assert.equal(deserialize({ ...base, variants: ['biao', ...base.variants.slice(1)] }, config), null);
+  // 词条级缺 variant → 坏档
+  assert.equal(deserialize({ ...base, variants: [null, ...base.variants.slice(1)] }, config), null);
+  // 特殊产物 id 合法
+  assert.ok(deserialize({ ...base, variants: ['sui-jun', ...base.variants.slice(1)] }, config));
+  assert.ok(deserialize({ ...base, variants: ['lina', ...base.variants.slice(1)] }, config));
+
+  // v2：没有 trueWon / buffs 字段 → 默认值
+  const v2 = { ...base, v: 2 } as Record<string, unknown>;
+  delete v2.trueWon;
+  delete v2.buffs;
+  const restored2 = deserialize(v2, config);
+  assert.ok(restored2);
+  assert.equal(restored2.trueWon, false);
+  assert.deepEqual(restored2.buffs, []);
+
+  // v1：没有 variants 字段（普通局面）
+  const v1 = {
+    v: 1,
+    size: 4,
+    sig: config.tiersSignature,
+    ranks: [0, 0, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    score: 0,
+    moves: 0,
+    won: false,
+  };
+  assert.ok(deserialize(v1, config));
 });
 
 test('合成体系可扩展：加一级后自动成为新的终点', () => {
@@ -386,17 +891,28 @@ test('随机模拟：核心不变量始终成立', () => {
       if (!result.moved) continue;
       state = result.state;
       assert.ok(state.score >= previousScore, '分数不可下降');
+      assert.ok(Number.isInteger(state.score), '分数必须是整数');
       previousScore = state.score;
       const tiles = state.cells.filter((tile): tile is NonNullable<typeof tile> => tile !== null);
       assert.ok(tiles.length <= config.size * config.size);
       assert.equal(new Set(tiles.map((tile) => tile.id)).size, tiles.length, '方块 id 必须唯一');
-      for (const tile of tiles) assert.ok(tile.rank >= 0 && tile.rank < config.tiers.length);
-      assert.equal(
-        state.over,
-        !canMove(state, config),
-        '终局标记要与可移动性一致',
-      );
-      if (state.won) assert.ok(tiles.some((tile) => tile.rank === config.winRank));
+      for (const tile of tiles) assert.ok(tile.rank >= 0 && tile.rank <= config.maxRank);
+      for (const tile of tiles) {
+        if (tile.rank === config.codexRank) {
+          assert.ok(tile.variant, '词条方块必须带词条 id');
+          assert.ok(entryById(config, tile.variant!), '词条 id 必须在池子或特殊产物表里');
+        } else {
+          assert.equal(tile.variant, undefined, '普通等级不应该有词条 id');
+        }
+      }
+      for (const buff of state.buffs) {
+        assert.ok(buff.mult >= 1);
+        assert.ok(buff.movesLeft >= -1);
+      }
+      assert.equal(state.over, !canMove(state, config), '终局标记要与可移动性一致');
+      if (state.won) {
+        assert.ok(tiles.some((tile) => tile.rank >= config.winRank));
+      }
     }
   }
 });

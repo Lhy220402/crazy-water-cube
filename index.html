@@ -6,31 +6,66 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1"
     />
-    <meta name="theme-color" content="#07080d" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#eef1f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#06121a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eaf4fa" media="(prefers-color-scheme: light)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="format-detection" content="telephone=no" />
-    <title>2048 · 军 → 刘 No.5</title>
+    <title>疯狂水立方 · 真通关了吗？</title>
     <link rel="stylesheet" href="./src/styles/main.css" />
   </head>
   <body>
     <main class="app" id="app">
       <div class="scene" aria-hidden="true">
-        <span class="scene__blob scene__blob--a"></span>
-        <span class="scene__blob scene__blob--b"></span>
-        <span class="scene__blob scene__blob--c"></span>
-        <span class="scene__sheen"></span>
+        <span class="scene__glow"></span>
+        <span class="scene__bubble scene__bubble--a"></span>
+        <span class="scene__bubble scene__bubble--b"></span>
+        <span class="scene__bubble scene__bubble--c"></span>
+        <span class="scene__bubble scene__bubble--d"></span>
+        <span class="scene__bubble scene__bubble--e"></span>
+        <span class="scene__wave scene__wave--a"></span>
+        <span class="scene__wave scene__wave--b"></span>
       </div>
+
+      <section
+        class="intro"
+        id="intro"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="intro-title"
+      >
+        <div class="intro__card">
+          <div class="intro__mark" aria-hidden="true">💧</div>
+          <p class="intro__eyebrow">水主题 2048</p>
+          <h1 class="intro__title" id="intro-title">疯狂水立方</h1>
+          <p class="intro__chain">军 → 赢² → 水³ → Lec → OLD FIVE</p>
+          <p class="intro__hook">合出 OLD FIVE 只是假通关——真正的结局，藏在词条之间。</p>
+          <div class="intro__stats">
+            <div class="intro__stat">
+              <span>最高分</span>
+              <strong id="intro-best">0</strong>
+            </div>
+            <div class="intro__stat">
+              <span>已收录</span>
+              <strong id="intro-codex">0 条</strong>
+            </div>
+          </div>
+          <div class="intro__actions">
+            <button class="pill pill--primary" id="intro-start" type="button">开始合成</button>
+            <button class="pill pill--ghost" id="intro-guide" type="button">玩法说明</button>
+          </div>
+          <p class="intro__hint">滑动棋盘，或按方向键 / WASD · 单文件离线可玩</p>
+        </div>
+      </section>
 
       <div class="shell">
         <header class="head">
           <div class="brand">
-            <div class="brand__mark" aria-hidden="true">合</div>
+            <div class="brand__mark" aria-hidden="true">💧</div>
             <div class="brand__meta">
-              <h1 class="brand__title">2048</h1>
-              <p class="brand__sub" id="chain-caption">军 → 赢² → 水³ → Lec → 刘 No.5</p>
+              <h1 class="brand__title">疯狂水立方</h1>
+              <p class="brand__sub" id="chain-caption">军 → 赢² → 水³ → Lec → OLD FIVE</p>
             </div>
           </div>
           <div class="scores">
@@ -46,23 +81,26 @@
         </header>
 
         <section class="stage">
+          <div class="buffs" id="buffs" hidden aria-label="当前增益"></div>
           <div
             class="board"
             id="board"
             role="application"
-            aria-label="2048 棋盘：上下左右滑动，或用键盘方向键移动方块"
+            aria-label="疯狂水立方棋盘：上下左右滑动，或用键盘方向键移动方块"
           >
             <div class="board__grid" id="grid" aria-hidden="true"></div>
             <div class="board__tiles" id="tiles"></div>
             <div class="board__fx" id="fx" aria-hidden="true"></div>
           </div>
-          <p class="hint" id="hint">滑动或按方向键 · 两枚同级相碰即可合成</p>
+          <p class="hint" id="hint">滑动或按方向键 · 同级相碰合成 · 词条之间藏着特殊组合</p>
         </section>
 
         <footer class="bar">
           <button class="pill pill--primary" id="btn-new" type="button">新游戏</button>
           <button class="pill" id="btn-undo" type="button" disabled>撤销</button>
           <button class="pill pill--ghost" id="btn-guide" type="button">图鉴</button>
+          <button class="pill pill--ghost" id="btn-about" type="button">关于</button>
+          <button class="pill pill--icon" id="btn-theme" type="button" aria-label="外观：跟随系统，点击切换">◐</button>
         </footer>
       </div>
 
@@ -85,11 +123,38 @@
         <div class="panel panel--sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
           <div class="sheet__grip" aria-hidden="true"></div>
           <div class="sheet__head">
-            <h2 class="panel__title panel__title--sm" id="sheet-title">合成图鉴</h2>
+            <h2 class="panel__title panel__title--sm" id="sheet-title">图鉴</h2>
             <button class="sheet__close" id="sheet-close" type="button" aria-label="关闭">✕</button>
           </div>
+          <div class="tabs" role="tablist" aria-label="图鉴分类">
+            <button
+              class="tab is-active"
+              id="tab-chain"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="pane-chain"
+            >
+              合成链
+            </button>
+            <button
+              class="tab"
+              id="tab-codex"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="pane-codex"
+            >
+              词条 <span class="tab__count" id="tab-codex-count"></span>
+            </button>
+          </div>
           <p class="panel__text" id="sheet-sub"></p>
-          <div class="chain" id="chain"></div>
+          <div class="pane" id="pane-chain">
+            <div class="chain" id="chain"></div>
+          </div>
+          <div class="pane" id="pane-codex" hidden>
+            <div class="codex" id="codex"></div>
+          </div>
           <button class="pill pill--primary pill--wide" id="sheet-done" type="button">开始合成</button>
         </div>
       </div>

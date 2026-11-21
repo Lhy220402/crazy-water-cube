@@ -14,24 +14,26 @@ await mkdir(out, { recursive: true });
 
 // 1) 单文件版：微信里直接发这个
 const single = resolve(root, 'dist/2048.html');
-const singleName = '2048-军合成-Lec-刘No5.html';
+const singleName = '疯狂水立方.html';
 await copyFile(single, resolve(out, singleName));
 
 // 2) 源码：tar.gz，不包含 node_modules / dist
-const srcName = '2048-source.tar.gz';
+const srcName = '疯狂水立方-source.tar.gz';
 const srcPath = resolve(out, srcName);
 await rm(srcPath, { force: true });
 const { spawnSync } = await import('node:child_process');
-const files = ['src', 'scripts', 'tests', 'index.html', 'package.json', 'tsconfig.json', 'tsconfig.test.json', 'README.md'];
+const files = ['src', 'scripts', 'tests', 'docs', 'index.html', 'package.json', 'tsconfig.json', 'tsconfig.test.json', 'README.md'];
 const tar = spawnSync('tar', ['-czf', srcPath, '-C', root, ...files], { encoding: 'utf8' });
 if (tar.status !== 0) throw new Error(`打包源码失败：${tar.stderr}`);
 
-// 3) 玩法说明
+// 3) 玩法说明 + 交接文档
 const readme = await readFile(resolve(root, 'README.md'), 'utf8');
 await writeFile(resolve(out, '玩法说明.md'), readme, 'utf8');
+await copyFile(resolve(root, 'docs/交接文档.md'), resolve(out, '疯狂水立方-交接文档.md'));
+await copyFile(resolve(root, 'docs/新对话提示词.md'), resolve(out, '疯狂水立方-新对话提示词.md'));
 
 const size = async (file) => ((await stat(file)).size / 1024).toFixed(1);
 console.log(`\n✓ 已发布到 ${out}`);
 console.log(`  单文件：${singleName}  ${await size(resolve(out, singleName))} KB  （微信发给同学，点开即玩）`);
 console.log(`  源码：  ${srcName}  ${await size(srcPath)} KB`);
-console.log(`  说明：  玩法说明.md`);
+console.log(`  说明：  玩法说明.md / 疯狂水立方-交接文档.md / 疯狂水立方-新对话提示词.md`);

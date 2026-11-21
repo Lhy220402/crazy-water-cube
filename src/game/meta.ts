@@ -1,0 +1,34 @@
+/**
+ * 品牌与「关于」配置 —— 改游戏名、简介、仓库链接，只改这一个文件。
+ *
+ * 仓库：
+ *   Gitee  https://gitee.com/leng-haoyuan/jun2048   显示名「疯狂水立方」
+ *   GitHub https://github.com/Lhy220402/crazy-water-cube
+ *   （GitHub 不支持中文仓库名，所以 slug 用 crazy-water-cube，中文名写在仓库简介里。）
+ *
+ * ★ 简介注意：不要写「记 + 赢²」这个真通关配方（隐藏契约）。
+ */
+
+export const GAME_NAME = '疯狂水立方';
+export const GAME_VERSION = '2.1.0';
+
+export const GAME_TAGLINE = '军 → 赢² → 水³ → Lec → OLD FIVE';
+
+export const ABOUT_TEXT =
+  '疯狂水立方是一款水主题的 2048 合成小游戏：在 4×4 棋盘上上下左右滑动（手机直接滑，电脑用方向键或 WASD），' +
+  '两枚相同的方块相碰就合成更高一级，从「军」一路合到 OLD FIVE，每次合成都加分。' +
+  '合出 OLD FIVE 只是假通关——词条之间还藏着特殊组合，真正的结局等你自己试出来。' +
+  '词条级方块可以互相合成，触发图鉴收录；稀有度（普 / 稀 / 传）只影响出现概率，不限制配对，' +
+  '特殊组合还会带来限时得分加成，多个加成乘算叠加。' +
+  '图鉴收录跨局累积，重新开局不会清空；最多可撤销 20 步；棋局、最高分和外观偏好都保存在本机。' +
+  '整个游戏是一个单文件网页，断网也能玩，微信里点开即开。';
+
+export interface RepoLink {
+  readonly label: string;
+  readonly url: string;
+}
+
+export const REPO_LINKS: readonly RepoLink[] = [
+  { label: 'Gitee 仓库', url: 'https://gitee.com/leng-haoyuan/jun2048' },
+  { label: 'GitHub 仓库', url: 'https://github.com/Lhy220402/crazy-water-cube' },
+];
