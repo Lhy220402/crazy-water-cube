@@ -4,10 +4,10 @@
 每次打开先看到「疯狂水立方」开场界面，点开始（或按 Enter / Space）进入棋局。
 合出 OLD FIVE 只是**假通关**——真正的通关门道，藏在词条之间，留给你自己发现。
 
-## 下载（v2.2.0）
+## 下载（v2.2.1）
 
 - **在线玩**：[https://lhy220402.github.io/crazy-water-cube/](https://lhy220402.github.io/crazy-water-cube/)（GitHub Pages，等同单文件版）。
-- **单文件版**：下载 `疯狂水立方.html`（约 94 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
+- **单文件版**：下载 `疯狂水立方.html`（约 95 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
 - **发行版**：[GitHub Releases](https://github.com/Lhy220402/crazy-water-cube/releases) · [Gitee 发行版](https://gitee.com/leng-haoyuan/jun2048/releases)（含单文件版、源码包、玩法说明、SHA256 校验和）。
 - **源码**：发行版里的 `疯狂水立方-source.tar.gz`，或 `git clone` 本仓库；`npm install && npm run build` 重新打包。
 
@@ -58,6 +58,7 @@
 - **未收录前图鉴是空白的**：词条页只显示「图鉴还是空白的」加一张问号悬念卡，不剧透名字、不显示总数；抽到/触发那一步才写入图鉴。特殊产物在合成链页首次触发前也打码。
 - 图鉴两页：「合成链」（固定链 + 词条入口 + 特殊配方）、「词条」（已收集卡片）。收录跨局累积，重新开局不清空，撤销不回退。
 - 撤销最多 20 步；最高分 / 棋局 / 图鉴自动存在浏览器本地，关掉再打开接着玩。
+- 底栏「🔊 / 🔇」按钮开关合成音效，偏好会被记住（`jun2048.sound`）。
 - 键盘：方向键 / WASD 移动，`Z` 撤销，`Esc` 关弹窗；开场界面按 Enter / Space 进入。
 - 底栏「关于」：玩法简介 + 在线玩 / Gitee / GitHub 链接；「◐」按钮切换外观（跟随系统 → 浅色 → 深色，记住偏好）。
 
@@ -99,7 +100,7 @@ src/
   main.ts       入口
 index.html      页面骨架（含开场界面与内联占位）
 scripts/        build / dev / verify-dist / pack / audio / pages
-tests/          engine.test.ts（33）+ audio.test.ts（2）+ ui.test.ts（31）
+tests/          engine.test.ts（33）+ audio.test.ts（3）+ ui.test.ts（32）
 docs/           交接文档 / 新对话提示词 / 设计文档
 ```
 
@@ -109,7 +110,7 @@ docs/           交接文档 / 新对话提示词 / 设计文档
 npm install
 npm run build     # → dist/2048.html
 npm run dev       # 本地预览，手机同网络可访问
-npm run verify    # 类型检查 + 66 测试 + 单文件自检
+npm run verify    # 类型检查 + 68 测试 + 单文件自检
 npm run pack      # 发布到 /sdcard/Download/DSH-Go/
 npm run pages     # 单文件版发布到 GitHub Pages（gh-pages 分支）
 ```
@@ -120,7 +121,8 @@ npm run pages     # 单文件版发布到 GitHub Pages（gh-pages 分支）
   响度归一化，转成单声道 mp3，再 base64 内联进 `src/ui/merge-sfx.ts`。
 - 播放：点「开始合成 / 继续游戏」时 `unlock()` 创建 AudioContext 并解码；只在**合成**后播放
   （merge / special / win / truewin 用不同音高），普通移动、无效移动、撤销保持安静。
-- 单文件契约：音频是 data URI，不引外部资源、不写 localStorage，四个存档 key 不变。
+- 单文件契约：音频是 data URI，不引外部资源；声音开关存 `jun2048.sound`（第 5 个 localStorage key，`on`/`off`，缺省开）。
+- 底栏「🔊 / 🔇」按钮切换 `audio.setEnabled()`，按钮状态与存档同步；音量本身不持久化。
 - 重新处理：`node scripts/audio.mjs <源音频> [起始秒] [结束秒]`（默认 1.15–2.05）。
 - 以后要加背景音乐：在 `audio.ts` 的 `unlock()` 里加载 loop；音乐开关若要持久化，
   先同步更新交接文档的存档契约再加第 5 个 key。

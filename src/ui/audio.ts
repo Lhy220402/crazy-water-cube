@@ -8,7 +8,8 @@
  *   - 只对「合成」发声：merge / special / win / truewin；普通移动 / 无效移动 / 撤销
  *     保持安静，避免每步都响。用 playbackRate 让特殊合成与通关的音高更高一点。
  *   - 没有 AudioContext（旧浏览器、jsdom、测试）时全部安全降级为 no-op。
- *   - 不读写 localStorage：静音/音量只在本次会话生效，四个存档 key 契约不变。
+ *   - 声音开关持久化在 `${storageKey}.sound`（'on' / 'off'，缺省 = 开），
+ *     这是第 5 个 localStorage key；不存音量。
  *
  * 以后要做背景音乐：在 unlock() 里加载 loop 资源，startMusic/stopMusic 控制即可；
  * 若要持久化音乐开关，先更新 docs/交接文档.md 的存档契约再加第 5 个 key。
@@ -84,7 +85,16 @@ function audioCtorOf(w: Window | null): AudioContextCtor | null {
 
 export function createAudio(options: AudioOptions): AudioEngine {
   const w = options.w;
+  const kv = options.kv ?? null;
+  const soundKey = options.storageKey ? `${options.storageKey}.sound` : null;
   let enabled = true;
+  if (kv && soundKey) {
+    try {
+      if (kv.get(soundKey) === 'off') enabled = false;
+    } catch {
+      /* 读不到就当开启 */
+    }
+  }
   let volume = 0.7;
   let music = false;
   let unlocked = false;
@@ -156,6 +166,15 @@ export function createAudio(options: AudioOptions): AudioEngine {
     }
   }
 
+  function persistEnabled(): void {
+    if (!kv || !soundKey) return;
+    try {
+      kv.set(soundKey, enabled ? 'on' : 'off');
+    } catch {
+      /* 存不了就只在本次会话生效 */
+    }
+  }
+
   function handleCue(cue: AudioCue): void {
     switch (cue) {
       // 普通合成：原声
@@ -206,6 +225,7 @@ export function createAudio(options: AudioOptions): AudioEngine {
       enabled = on;
       if (!on) music = false;
       if (master) master.gain.value = enabled ? volume : 0;
+      persistEnabled();
     },
     setVolume(value: number) {
       volume = clampVolume(value);

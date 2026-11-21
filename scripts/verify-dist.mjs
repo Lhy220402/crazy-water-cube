@@ -31,6 +31,7 @@ check(html.includes('真通关了吗') && html.includes('记赢赢'), '缺少假
 check(html.includes('李娜') && html.includes('豆包AI'), '缺少新增词条/配方文案');
 check(html.includes('彪') && html.includes('会成') && html.includes('🌧️'), '缺少 v2.2 新增词条文案');
 check(html.includes('id="intro"') && html.includes('id="intro-start"'), '缺少开场界面');
+check(html.includes('id="btn-sound"'), '缺少声音开关');
 check(html.includes('viewport') && html.includes('user-scalable=no'), '缺少移动端 viewport');
 check(html.includes('safe-area-inset'), '缺少安全区适配');
 check(html.includes('prefers-reduced-motion'), '缺少减少动效适配');

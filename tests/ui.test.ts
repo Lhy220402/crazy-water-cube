@@ -45,7 +45,7 @@ async function boot(
   saved?: unknown,
   codex?: unknown,
   theme?: string,
-  options: { skipIntro?: boolean; best?: number } = {},
+  options: { skipIntro?: boolean; best?: number; sound?: 'on' | 'off' } = {},
 ): Promise<Harness> {
   const virtualConsole = new VirtualConsole();
   const errors: string[] = [];
@@ -66,6 +66,7 @@ async function boot(
       if (codex !== undefined) window.localStorage.setItem('jun2048.codex', JSON.stringify(codex));
       if (theme !== undefined) window.localStorage.setItem('jun2048.theme', theme);
       if (options.best !== undefined) window.localStorage.setItem('jun2048.best', String(options.best));
+      if (options.sound !== undefined) window.localStorage.setItem('jun2048.sound', options.sound);
     },
   });
   const win = dom.window as unknown as Window & typeof globalThis;
@@ -788,4 +789,27 @@ test('v2.2 新增词条：彪 / 会成 / 🌧️ 的稀有角标、色相与 emo
   assert.ok(card, '图鉴里应有 🌧️ 卡片');
   assert.equal(card.querySelector('.card__desc')?.textContent, '这雨似乎不大\n这是小雨啊');
   h.close();
+});
+
+test('声音开关：默认开启，点击静音并持久化，重开恢复', async () => {
+  const h = await boot();
+  const btn = h.$<HTMLButtonElement>('#btn-sound');
+  assert.equal(btn.getAttribute('aria-pressed'), 'true');
+  assert.equal(btn.textContent, '🔊');
+  assert.equal(btn.classList.contains('is-off'), false);
+  btn.dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  assert.equal(btn.getAttribute('aria-pressed'), 'false');
+  assert.equal(btn.textContent, '🔇');
+  assert.equal(btn.classList.contains('is-off'), true);
+  assert.equal(h.win.localStorage.getItem('jun2048.sound'), 'off');
+  assert.match(btn.getAttribute('aria-label') ?? '', /音效：关/);
+  h.close();
+
+  const h2 = await boot(undefined, undefined, undefined, { sound: 'off' });
+  const btn2 = h2.$<HTMLButtonElement>('#btn-sound');
+  assert.equal(btn2.getAttribute('aria-pressed'), 'false');
+  assert.equal(btn2.textContent, '🔇');
+  btn2.dispatchEvent(new h2.win.MouseEvent('click', { bubbles: true }));
+  assert.equal(h2.win.localStorage.getItem('jun2048.sound'), 'on');
+  h2.close();
 });

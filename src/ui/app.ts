@@ -114,8 +114,8 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     storageKey: config.storageKey,
     button: need<HTMLButtonElement>(root, '#btn-theme'),
   });
-  // 音频预留：当前是空实现，以后在 audio.ts 里接背景音乐 / 音效即可
-  const audio = createAudio({ w });
+  // 音频：合成猫叫音效 + 声音开关（偏好存 jun2048.sound）
+  const audio = createAudio({ w, kv, storageKey: config.storageKey });
 
   /* ---------------- 状态 ---------------- */
   const history: GameState[] = [];
@@ -135,7 +135,20 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   const btnUndo = need<HTMLButtonElement>(root, '#btn-undo');
   const btnGuide = need<HTMLButtonElement>(root, '#btn-guide');
   const btnAbout = need<HTMLButtonElement>(root, '#btn-about');
+  const btnSound = need<HTMLButtonElement>(root, '#btn-sound');
   const boardEl = need<HTMLElement>(root, '#board');
+
+  /** 同步声音按钮的图标 / 无障碍状态 */
+  function syncSoundButton(): void {
+    const on = audio.enabled;
+    btnSound.textContent = on ? '🔊' : '🔇';
+    btnSound.setAttribute('aria-pressed', String(on));
+    btnSound.classList.toggle('is-off', !on);
+    const label = `音效：${on ? '开' : '关'}，点击${on ? '关闭' : '开启'}`;
+    btnSound.setAttribute('aria-label', label);
+    btnSound.title = label;
+  }
+  syncSoundButton();
 
   /* ---------------- 存档 ---------------- */
   function readBest(): number {
@@ -601,6 +614,11 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   function onAbout(): void {
     overlay.show(buildAbout());
   }
+  function onSound(): void {
+    audio.setEnabled(!audio.enabled);
+    syncSoundButton();
+    hud.announce(audio.enabled ? '音效已开启' : '音效已关闭');
+  }
   function onPageHide(): void {
     save();
   }
@@ -608,6 +626,7 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   btnUndo.addEventListener('click', undo);
   btnGuide.addEventListener('click', onGuide);
   btnAbout.addEventListener('click', onAbout);
+  btnSound.addEventListener('click', onSound);
   w?.addEventListener('pagehide', onPageHide);
 
   const api: AppApi = {
@@ -633,6 +652,7 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
       btnUndo.removeEventListener('click', undo);
       btnGuide.removeEventListener('click', onGuide);
       btnAbout.removeEventListener('click', onAbout);
+      btnSound.removeEventListener('click', onSound);
       w?.removeEventListener('pagehide', onPageHide);
       w?.removeEventListener('resize', onResize);
       w?.removeEventListener('orientationchange', onResize);

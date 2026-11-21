@@ -1143,6 +1143,12 @@ button {
   margin-top: 4px;
 }
 
+/* 声音开关：关闭时弱化图标 */
+.pill--icon.is-off {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+
 /* ---------- 弹窗（假通关 / 真通关 / 结束 / 确认 / 解释 / 关于） ---------- */
 
 .overlay {

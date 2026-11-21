@@ -10,7 +10,7 @@
  */
 
 export const GAME_NAME = '疯狂水立方';
-export const GAME_VERSION = '2.2.0';
+export const GAME_VERSION = '2.2.1';
 
 export const GAME_TAGLINE = '军 → 赢² → 水³ → Lec → OLD FIVE';
 

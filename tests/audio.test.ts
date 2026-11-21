@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAudio } from '../src/ui/audio.ts';
+import type { KV } from '../src/ui/storage.ts';
 
 /**
  * 音频引擎单元测试：
@@ -102,4 +103,26 @@ test('音频引擎：有 AudioContext 时只在合成 cue 播放，enabled=false
   assert.equal(started, 5);
 
   audio.destroy();
+});
+
+test('声音开关持久化：写入 jun2048.sound，新实例能恢复', () => {
+  const map = new Map<string, string>();
+  const kv: KV = {
+    get: (key) => map.get(key) ?? null,
+    set: (key, value) => {
+      map.set(key, value);
+    },
+    remove: (key) => {
+      map.delete(key);
+    },
+  };
+  const first = createAudio({ w: null, kv, storageKey: 'jun2048' });
+  assert.equal(first.enabled, true, '没有存档时默认开启');
+  first.setEnabled(false);
+  assert.equal(map.get('jun2048.sound'), 'off');
+
+  const second = createAudio({ w: null, kv, storageKey: 'jun2048' });
+  assert.equal(second.enabled, false, '重开后应恢复静音');
+  second.setEnabled(true);
+  assert.equal(map.get('jun2048.sound'), 'on');
 });
