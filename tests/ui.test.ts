@@ -319,6 +319,9 @@ test('首次抽到词条：弹解释卡、写入图鉴，名字此刻才可见',
       '小明',
       '燕子',
       '豆包AI',
+      '彪',
+      '会成',
+      '🌧️',
     ].includes(title),
     `解释标题应是词条名，实际：${title}`,
   );
@@ -344,16 +347,17 @@ test('重复抽到已收录词条不重复弹解释层', async () => {
     sui: 1, 'eyu-qi': 1, 'sui-ring': 1, 'eyu-shi-jun': 1, ji: 1,
     'sui-jun': 1, 'sui-jun-ring': 1, 'ji-ying-ying': 1, lina: 1,
     bayi: 1, hongmei: 1, jinshan: 1, fuli: 1, li: 1, na: 1, xiaoming: 1, yanzi: 1, doubao: 1,
+    biao: 1, huicheng: 1, xiaoyu: 1,
   };
   const h = await boot(saved([4, 4, ...EMPTY16.slice(2)], { won: true }), all);
-  assert.equal(Object.keys(h.app.codex).length, 18, '读档应恢复全部收录（含特殊产物）');
+  assert.equal(Object.keys(h.app.codex).length, 21, '读档应恢复全部收录（含特殊产物）');
   h.app.move('left');
   await settle(h);
   await sleep(120);
   assert.equal(h.$('#overlay').hidden, true, '重复词条不弹解释层');
   const counts = Object.values(h.app.codex).reduce((sum, n) => sum + n, 0);
-  assert.equal(counts, 19, '重复抽到也要累加出现次数');
-  assert.equal(Object.keys(h.app.codex).length, 18);
+  assert.equal(counts, 22, '重复抽到也要累加出现次数');
+  assert.equal(Object.keys(h.app.codex).length, 21);
   h.close();
 });
 
@@ -384,6 +388,9 @@ test('图鉴词条页：没收集前完全空白、不剧透名字和数量', as
     '燕子',
     '豆包AI',
     '李娜',
+    '彪',
+    '会成',
+    '🌧️',
   ]) {
     assert.equal(text.includes(name), false, `不能剧透「${name}」`);
   }
@@ -544,7 +551,7 @@ test('新游戏需要二次确认，取消不会清空', async () => {
   h.close();
 });
 
-test('关于：简介 + Gitee/GitHub 链接（新窗口打开）', async () => {
+test('关于：简介 + 在线玩/Gitee/GitHub 链接（新窗口打开）', async () => {
   const h = await boot();
   h.$('#btn-about').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
   await sleep(30);
@@ -560,13 +567,16 @@ test('关于：简介 + Gitee/GitHub 链接（新窗口打开）', async () => {
   assert.equal(aboutText.includes('记赢赢'), false, '关于不泄露真通关配方');
   assert.equal(aboutText.includes('赢²'), false, '关于不泄露真通关配方');
   const links = h.$('#overlay-actions').querySelectorAll('a.pill');
-  assert.equal(links.length, 2);
-  assert.match(links[0]!.getAttribute('href') ?? '', /gitee\.com/);
-  assert.match(links[1]!.getAttribute('href') ?? '', /github\.com/);
-  assert.equal((links[0]!.getAttribute('href') ?? '').includes('your-name'), false, '仓库链接不能是占位');
-  assert.equal((links[1]!.getAttribute('href') ?? '').includes('your-name'), false, '仓库链接不能是占位');
-  assert.equal(links[0]!.getAttribute('target'), '_blank');
-  assert.equal(links[0]!.getAttribute('rel'), 'noopener noreferrer');
+  assert.equal(links.length, 3, '在线玩 + 两个仓库');
+  assert.match(links[0]!.getAttribute('href') ?? '', /lhy220402\.github\.io/);
+  assert.match(links[1]!.getAttribute('href') ?? '', /gitee\.com/);
+  assert.match(links[2]!.getAttribute('href') ?? '', /github\.com/);
+  for (const link of links) {
+    const href = link.getAttribute('href') ?? '';
+    assert.equal(href.includes('your-name'), false, '链接不能是占位');
+    assert.equal(link.getAttribute('target'), '_blank');
+    assert.equal(link.getAttribute('rel'), 'noopener noreferrer');
+  }
   h.$('#overlay-actions .pill--primary').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
   await sleep(OVERLAY + 60);
   assert.equal(h.$('#overlay').hidden, true);
@@ -628,9 +638,9 @@ test('坏存档与换池子的旧档不会白屏，退回新局', async () => {
   assert.equal(ranks(h).filter((rank) => rank !== null).length, 2);
   h.close();
 
-  // 旧池子词条（biao）已不存在 → 判坏档开新局
+  // 旧池子词条（removed-entry）已不存在 → 判坏档开新局
   const h2 = await boot(
-    saved([5, ...EMPTY16.slice(1)], { variants: ['biao', ...EMPTY16.slice(1).map(() => null)], won: true }),
+    saved([5, ...EMPTY16.slice(1)], { variants: ['removed-entry', ...EMPTY16.slice(1).map(() => null)], won: true }),
   );
   assert.equal(ranks(h2).filter((rank) => rank !== null).length, 2);
   h2.close();
@@ -746,5 +756,36 @@ test('新增词条渲染：豆包AI 四字缩字号，Li/Na 稀有角标与自�
   const na = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="na"]');
   assert.ok(na);
   assert.equal(na.style.getPropertyValue('--hue'), '58');
+  h.close();
+});
+
+test('v2.2 新增词条：彪 / 会成 / 🌧️ 的稀有角标、色相与 emoji 字号', async () => {
+  const variants = ['biao', 'huicheng', 'xiaoyu', null, ...EMPTY16.slice(4).map(() => null)];
+  const h = await boot(
+    saved([5, 5, 5, null, ...EMPTY16.slice(4)], { variants, won: true }),
+    { biao: 1, huicheng: 1, xiaoyu: 1 },
+  );
+  const biao = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="biao"]');
+  assert.ok(biao, '棋盘上应有彪');
+  assert.equal(biao.querySelector('.tile__label--codex')?.textContent, '彪');
+  assert.equal(biao.querySelector('.tile__label--codex')?.classList.contains('is-s1'), true);
+  assert.equal(biao.querySelector('.tile__rarity')?.textContent, '稀');
+  assert.equal(biao.style.getPropertyValue('--hue'), '24');
+  const huicheng = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="huicheng"]');
+  assert.ok(huicheng);
+  assert.equal(huicheng.querySelector('.tile__label--codex')?.textContent, '会成');
+  assert.equal(huicheng.querySelector('.tile__label--codex')?.classList.contains('is-s1'), true);
+  const yu = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="xiaoyu"]');
+  assert.ok(yu, '棋盘上应有 🌧️');
+  assert.equal(yu.querySelector('.tile__label--codex')?.textContent, '🌧️');
+  assert.equal(yu.querySelector('.tile__label--codex')?.classList.contains('is-s1'), true);
+  assert.equal(yu.style.getPropertyValue('--hue'), '252');
+
+  // 图鉴卡片保留 🌧️ 解释里的换行（CSS white-space: pre-line）
+  h.app.openGuide('codex');
+  await sleep(30);
+  const card = h.$('#codex').querySelector<HTMLElement>('.card[data-entry="xiaoyu"]');
+  assert.ok(card, '图鉴里应有 🌧️ 卡片');
+  assert.equal(card.querySelector('.card__desc')?.textContent, '这雨似乎不大\n这是小雨啊');
   h.close();
 });

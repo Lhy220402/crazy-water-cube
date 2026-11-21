@@ -23,6 +23,10 @@ export const LORE: Readonly<Record<string, string>> = {
   xiaoming: '我在数学题里总看见你',
   yanzi: '可曾拍过什么全城热恋',
   doubao: '我代码可不是用豆包写的嗷',
+  biao: '彪！',
+  huicheng: '会成吗？',
+  // 🌧️ 的解释是两行，弹层与图鉴卡片都保留换行（CSS white-space: pre-line）
+  xiaoyu: '这雨似乎不大\n这是小雨啊',
   // 特殊合成产物
   'sui-jun': '隋和军组队出征：接下来 8 步，所有合成得分 ×2。',
   'sui-jun-ring': '666 一家齐上了',

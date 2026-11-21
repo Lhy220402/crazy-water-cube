@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TIERS, allEntries, createConfig, entryById } from '../src/game/config.ts';
-import { LORE_FALLBACK, loreOf } from '../src/game/lore.ts';
+import { LORE, LORE_FALLBACK, loreOf } from '../src/game/lore.ts';
 import { buffMultiplier, parseBuffs, tickBuffs } from '../src/game/buffs.ts';
 import {
   canMove,
@@ -274,17 +274,17 @@ test('任意两条词条都能合（稀有度不影响配对），结果全池�
     ],
     config,
   );
-  // 权重总和 31；0.5×31=15.5 落在「红梅」
+  // 权重总和 37；0.5×37=18.5 落在「金山」
   const result = move(state, 'left', config, fixedRng(0.5));
   assert.equal(result.moved, true);
   assert.equal(result.merges[0]!.rank, config.codexRank);
   assert.equal(result.codexDraws.length, 1);
-  assert.equal(result.codexDraws[0]!.entryId, 'hongmei');
+  assert.equal(result.codexDraws[0]!.entryId, 'jinshan');
   const produced = result.state.cells.find((tile) => tile?.rank === config.codexRank);
-  assert.equal(produced?.variant, 'hongmei');
+  assert.equal(produced?.variant, 'jinshan');
 });
 
-test('词条按权重随机，允许重复，14 条都能抽到', () => {
+test('词条按权重随机，允许重复，17 条都能抽到', () => {
   const config = createConfig();
   const seen = new Map<string, number>();
   for (let i = 0; i < 500; i += 1) {
@@ -304,11 +304,13 @@ test('词条按权重随机，允许重复，14 条都能抽到', () => {
   }
   assert.deepEqual([...seen.keys()].sort(), [
     'bayi',
+    'biao',
     'doubao',
     'eyu-qi',
     'eyu-shi-jun',
     'fuli',
     'hongmei',
+    'huicheng',
     'ji',
     'jinshan',
     'li',
@@ -316,6 +318,7 @@ test('词条按权重随机，允许重复，14 条都能抽到', () => {
     'sui',
     'sui-ring',
     'xiaoming',
+    'xiaoyu',
     'yanzi',
   ]);
   for (const count of seen.values()) assert.ok(count > 0);
@@ -384,18 +387,22 @@ test('特殊配方：Li + Na → 李娜（+128，×2/8步，和隋军同一梯�
   assert.equal(followUp.merges[0]!.gained, 64);
 });
 
-test('每条词条与特殊产物都有解释文案（图鉴池 14 + 特殊产物 4）', () => {
+test('每条词条与特殊产物都有解释文案（图鉴池 17 + 特殊产物 4）', () => {
   const config = createConfig();
-  assert.equal(config.codex!.entries.length, 14);
+  assert.equal(config.codex!.entries.length, 17);
   assert.equal(config.codex!.specials.length, 4);
   const entries = allEntries(config);
-  assert.equal(entries.length, 18);
+  assert.equal(entries.length, 21);
   for (const entry of entries) {
     const text = loreOf(entry.id);
     assert.ok(text.length > 0, `${entry.id} 缺解释`);
     assert.notEqual(text, LORE_FALLBACK, `${entry.id} 还是兜底句`);
     assert.equal(text.includes('占位'), false, `${entry.id} 还是占位`);
   }
+  // v2.2 新增词条：文案按用户原文，🌧️ 保留两行
+  assert.equal(LORE.biao, '彪！');
+  assert.equal(LORE.huicheng, '会成吗？');
+  assert.equal(LORE.xiaoyu, '这雨似乎不大\n这是小雨啊');
 });
 
 test('特殊配方：隋 + 军 → 隋军（+64，挂 ×2/8步 增益）', () => {
@@ -813,8 +820,8 @@ test('词条存档校验：未知词条 id 判坏档；v1/v2 旧档兼容', () =
     buffs: [],
   };
   assert.ok(deserialize(base, config));
-  // 旧池子里的词条 id 已不存在 → 坏档
-  assert.equal(deserialize({ ...base, variants: ['biao', ...base.variants.slice(1)] }, config), null);
+  // 旧池子里的词条 id 已不存在 → 坏档（用不会出现在池子里的 id）
+  assert.equal(deserialize({ ...base, variants: ['removed-entry', ...base.variants.slice(1)] }, config), null);
   // 词条级缺 variant → 坏档
   assert.equal(deserialize({ ...base, variants: [null, ...base.variants.slice(1)] }, config), null);
   // 特殊产物 id 合法

@@ -10,7 +10,7 @@
  */
 
 export const GAME_NAME = '疯狂水立方';
-export const GAME_VERSION = '2.1.0';
+export const GAME_VERSION = '2.2.0';
 
 export const GAME_TAGLINE = '军 → 赢² → 水³ → Lec → OLD FIVE';
 
@@ -29,6 +29,7 @@ export interface RepoLink {
 }
 
 export const REPO_LINKS: readonly RepoLink[] = [
+  { label: 'GitHub Pages 在线玩', url: 'https://lhy220402.github.io/crazy-water-cube/' },
   { label: 'Gitee 仓库', url: 'https://gitee.com/leng-haoyuan/jun2048' },
   { label: 'GitHub 仓库', url: 'https://github.com/Lhy220402/crazy-water-cube' },
 ];

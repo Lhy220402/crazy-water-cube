@@ -1,0 +1,105 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createAudio } from '../src/ui/audio.ts';
+
+/**
+ * 音频引擎单元测试：
+ *  - jsdom / 旧浏览器没有 AudioContext 时必须安全降级（游戏不能因此报错）
+ *  - 有 AudioContext 时，只有合成类 cue 会真正启动音源，且受 enabled / unlock 控制
+ * 用结构相同的假 AudioContext 跑真实播放路径，不依赖浏览器。
+ */
+test('音频引擎：没有 AudioContext 时全部安全降级', () => {
+  const audio = createAudio({ w: null });
+  audio.unlock();
+  for (const cue of ['start', 'move', 'merge', 'special', 'win', 'truewin', 'invalid', 'undo', 'over'] as const) {
+    audio.play(cue);
+  }
+  audio.play({ cue: 'merge', direction: 'left', merges: 2, gained: 16, variants: ['sui'] });
+  audio.startMusic();
+  assert.equal(audio.musicPlaying, true);
+  audio.stopMusic();
+  assert.equal(audio.musicPlaying, false);
+  audio.setVolume(3);
+  assert.equal(audio.volume, 1, '音量应被夹到 0..1');
+  audio.setVolume(Number.NaN);
+  assert.equal(audio.volume, 0.7);
+  audio.setEnabled(false);
+  assert.equal(audio.enabled, false);
+  audio.setEnabled(true);
+  audio.destroy();
+  assert.equal(audio.musicPlaying, false);
+});
+
+test('音频引擎：有 AudioContext 时只在合成 cue 播放，enabled=false 静音', () => {
+  let created = 0;
+  let started = 0;
+  const gain = () => ({ gain: { value: 0 }, connect() {} });
+  const source = () => ({
+    buffer: null as unknown,
+    playbackRate: { value: 1 },
+    connect() {},
+    start() {
+      started += 1;
+    },
+    stop() {},
+  });
+  class FakeAudioContext {
+    state = 'running';
+    destination = {};
+    constructor() {
+      created += 1;
+    }
+    createGain() {
+      return gain();
+    }
+    createBufferSource() {
+      return source();
+    }
+    decodeAudioData(_buffer: ArrayBuffer, ok: (buffer: unknown) => void, _bad?: (error: unknown) => void) {
+      // 同步回调，模拟解码完成；测试只关心播放路径
+      ok({ duration: 1 });
+    }
+    resume() {
+      return Promise.resolve();
+    }
+    close() {
+      return Promise.resolve();
+    }
+  }
+  const fakeWindow = {
+    AudioContext: FakeAudioContext,
+    atob: (value: string) => globalThis.atob(value),
+  } as unknown as Window;
+
+  const audio = createAudio({ w: fakeWindow });
+  // 未 unlock 前不创建 AudioContext，也不播放（自动播放策略）
+  audio.play('merge');
+  assert.equal(created, 0);
+  assert.equal(started, 0);
+
+  audio.unlock();
+  assert.equal(created, 1, 'unlock 后才创建 AudioContext');
+
+  audio.play('move');
+  audio.play('invalid');
+  audio.play('undo');
+  assert.equal(started, 0, '普通移动 / 无效移动 / 撤销不发声');
+
+  audio.play('merge');
+  assert.equal(started, 1, '普通合成播放一次');
+  audio.play('special');
+  assert.equal(started, 2, '特殊合成播放一次');
+  audio.play('win');
+  assert.equal(started, 3);
+  audio.play('truewin');
+  assert.equal(started, 4);
+
+  audio.setEnabled(false);
+  audio.play('merge');
+  assert.equal(started, 4, '关闭音效后不再启动音源');
+  audio.setEnabled(true);
+  audio.play({ cue: 'merge', merges: 1, gained: 8 });
+  assert.equal(started, 5);
+
+  audio.destroy();
+});

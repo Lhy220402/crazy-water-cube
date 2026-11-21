@@ -4,9 +4,10 @@
 每次打开先看到「疯狂水立方」开场界面，点开始（或按 Enter / Space）进入棋局。
 合出 OLD FIVE 只是**假通关**——真正的通关门道，藏在词条之间，留给你自己发现。
 
-## 下载（v2.1.0）
+## 下载（v2.2.0）
 
-- **单文件版**：下载 `疯狂水立方.html`（约 82.6 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
+- **在线玩**：[https://lhy220402.github.io/crazy-water-cube/](https://lhy220402.github.io/crazy-water-cube/)（GitHub Pages，等同单文件版）。
+- **单文件版**：下载 `疯狂水立方.html`（约 94 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
 - **发行版**：[GitHub Releases](https://github.com/Lhy220402/crazy-water-cube/releases) · [Gitee 发行版](https://gitee.com/leng-haoyuan/jun2048/releases)（含单文件版、源码包、玩法说明、SHA256 校验和）。
 - **源码**：发行版里的 `疯狂水立方-source.tar.gz`，或 `git clone` 本仓库；`npm install && npm run build` 重新打包。
 
@@ -14,7 +15,7 @@
 
 - 开场界面：最高分 + 已收录词条数；有存档时按钮变成「继续游戏」。点「玩法说明」直接看图鉴里的合成链。
 - 手指在棋盘上滑（上/下/左/右），或按键盘方向键 / WASD。
-- 两枚同级相碰就合成下一级，合成加分。
+- 两枚同级相碰就合成下一级，合成加分；每次合成会播放一声猫叫音效。
 - 固定合成链：
 
 | 材料 | 产物 | 得分 |
@@ -38,7 +39,7 @@
   多个增益乘算叠加；创建当步不生效也不消耗，从下一步开始倒数；棋盘上方徽章显示剩余步数。
 - **假通关 / 真通关**：第一次合出 OLD FIVE 弹「真通关了吗？」（礼花照放）。真正通关的方式游戏内不写明，靠探索；两种通关都只弹一次，之后继续玩。
 - **词条收集**：OLD FIVE 之后每次词条级合成都从池子里按权重随机抽一条。词条不用同名，任意两条都能合；稀有度（普通/稀有/传说）只影响显示和出现概率。允许重复，重复只累加出现次数。
-- **词条池（14 条随机 + 4 条特殊产物）**：
+- **词条池（17 条随机 + 4 条特殊产物，共 21 条）**：
 
 | 词条 | 稀有度 | 说明 |
 | --- | --- | --- |
@@ -49,6 +50,7 @@
 | 八一 / 红梅 / 金山 / 浮力 | 稀有 | 新增词条 |
 | Li / Na | 稀有 | 两种元素，相撞 → 李娜 |
 | 小明 / 燕子 / 豆包AI | 稀有 | 新增词条 |
+| 彪 / 会成 / 🌧️ | 稀有 | v2.2 新增词条（🌧️ 的解释是两行） |
 | 隋军 / 隋军·环 / 李娜 / 记赢赢 | 特殊产物 | 触发即收录，不进随机池 |
 
   棋子上有稀有度角标（普/稀/传/特）；每条词条有自己的渐变配色，新增/调整配色改 `codex.ts` 的 `hue` / `hue2`。
@@ -57,7 +59,7 @@
 - 图鉴两页：「合成链」（固定链 + 词条入口 + 特殊配方）、「词条」（已收集卡片）。收录跨局累积，重新开局不清空，撤销不回退。
 - 撤销最多 20 步；最高分 / 棋局 / 图鉴自动存在浏览器本地，关掉再打开接着玩。
 - 键盘：方向键 / WASD 移动，`Z` 撤销，`Esc` 关弹窗；开场界面按 Enter / Space 进入。
-- 底栏「关于」：玩法简介 + Gitee / GitHub 仓库链接；「◐」按钮切换外观（跟随系统 → 浅色 → 深色，记住偏好）。
+- 底栏「关于」：玩法简介 + 在线玩 / Gitee / GitHub 链接；「◐」按钮切换外观（跟随系统 → 浅色 → 深色，记住偏好）。
 
 ## 文件
 
@@ -82,7 +84,8 @@ src/
   ui/
     app.ts      编排：状态/历史/移动管线/收集/弹层优先级/存档
     intro.ts    开场界面（标题、最高分/图鉴统计、开始/玩法说明）
-    audio.ts    音频预留接口（空实现：背景音乐 / 每步音效以后只改这里）
+    audio.ts    音频引擎（WebAudio，合成后播放内联猫叫音效）
+    merge-sfx.ts 合成音效 data URI（scripts/audio.mjs 生成，勿手改）
     board.ts    棋盘渲染与动画编排
     hud.ts      得分/增益徽章/撤销状态/无障碍播报
     overlay.ts  居中弹层（假通关/真通关/结束/确认/解释/关于）
@@ -95,8 +98,8 @@ src/
     main.css    水主题液态玻璃：token 驱动明暗、稀有度可视化、动效
   main.ts       入口
 index.html      页面骨架（含开场界面与内联占位）
-scripts/        build / dev / verify-dist / pack
-tests/          engine.test.ts（33）+ ui.test.ts（30）
+scripts/        build / dev / verify-dist / pack / audio / pages
+tests/          engine.test.ts（33）+ audio.test.ts（2）+ ui.test.ts（31）
 docs/           交接文档 / 新对话提示词 / 设计文档
 ```
 
@@ -106,20 +109,21 @@ docs/           交接文档 / 新对话提示词 / 设计文档
 npm install
 npm run build     # → dist/2048.html
 npm run dev       # 本地预览，手机同网络可访问
-npm run verify    # 类型检查 + 63 测试 + 单文件自检
+npm run verify    # 类型检查 + 66 测试 + 单文件自检
 npm run pack      # 发布到 /sdcard/Download/DSH-Go/
+npm run pages     # 单文件版发布到 GitHub Pages（gh-pages 分支）
 ```
 
-## 想加背景音乐 / 每步音效
+## 音频（v2.2 已实现）
 
-接口已经留在 `src/ui/audio.ts`（当前是空实现，不创建 AudioContext、不加载资源）：
-
-- `createAudio()` 返回 `AudioEngine`：`unlock / play / setEnabled / setVolume / startMusic / stopMusic / destroy`。
-- `play()` 接受 cue 或 `AudioEvent`（cue + direction + merges + gained + variants），
-  每个动作的播放点都已埋好：start / move / merge / special / collect / invalid / undo / restart / win / truewin / over。
-- 实现时只改 `audio.ts`：在 `unlock()` 里创建 / 恢复 AudioContext，在 `play()` 里按 cue 播放。
-- 单文件契约不能引外部音频：资源要内联 data URI，或用 WebAudio 现场合成。
-- 音乐开关如果要记住，会需要第 5 个 localStorage key，先同步更新交接文档的存档契约。
+- 音源：用户提供的微信语音里的**第二声猫叫**（1.15s–2.05s），已降噪（ffmpeg `afftdn` + 高通）、
+  响度归一化，转成单声道 mp3，再 base64 内联进 `src/ui/merge-sfx.ts`。
+- 播放：点「开始合成 / 继续游戏」时 `unlock()` 创建 AudioContext 并解码；只在**合成**后播放
+  （merge / special / win / truewin 用不同音高），普通移动、无效移动、撤销保持安静。
+- 单文件契约：音频是 data URI，不引外部资源、不写 localStorage，四个存档 key 不变。
+- 重新处理：`node scripts/audio.mjs <源音频> [起始秒] [结束秒]`（默认 1.15–2.05）。
+- 以后要加背景音乐：在 `audio.ts` 的 `unlock()` 里加载 loop；音乐开关若要持久化，
+  先同步更新交接文档的存档契约再加第 5 个 key。
 
 ## 想加新词条（最常做的事）
 
@@ -149,4 +153,4 @@ npm run pack      # 发布到 /sdcard/Download/DSH-Go/
 ## 待补充
 
 - 真机浏览器目视检查（当前环境没有浏览器，未做）。
-- 两个仓库已设为公开，游戏「关于」里的链接可以直接打开。
+- 两个仓库已设为公开，游戏「关于」里的链接可以直接打开；GitHub Pages 在线版已部署。

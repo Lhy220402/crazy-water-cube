@@ -78,6 +78,11 @@ export const CODEX_ENTRIES: readonly CodexEntry[] = [
   { id: 'xiaoming', name: '小明', rarity: 'rare', weight: 2, hue: 236, hue2: 208 }, // 课本蓝紫
   { id: 'yanzi', name: '燕子', rarity: 'rare', weight: 2, hue: 202, hue2: 176 }, // 天空蓝
   { id: 'doubao', name: '豆包AI', rarity: 'rare', weight: 2, hue: 266, hue2: 296 }, // AI 紫
+
+  // v2.2 新增 3 条（用户提供文案）：仍按稀有默认权重 2，颜色避开已有色相
+  { id: 'biao', name: '彪', rarity: 'rare', weight: 2, hue: 24, hue2: 350 }, // 彪悍橙红
+  { id: 'huicheng', name: '会成', rarity: 'rare', weight: 2, hue: 132, hue2: 104 }, // 会成绿
+  { id: 'xiaoyu', name: '🌧️', rarity: 'rare', weight: 2, hue: 252, hue2: 224 }, // 小雨蓝紫
 ];
 
 /** 纯文本场景（无障碍、配方列表）用的名字：圈隋写作「隋·环」 */
