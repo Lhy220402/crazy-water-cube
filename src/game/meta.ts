@@ -10,7 +10,14 @@
  */
 
 export const GAME_NAME = '疯狂水立方';
-export const GAME_VERSION = '2.2.2';
+export const GAME_VERSION = '2.3.0';
+
+/**
+ * 启用「版本更新弹窗」记录（`jun2048.version`）之前的最后一个已发布版本。
+ * 只用于给「有存档痕迹、但还没有版本记录」的老玩家算升级提示（v2.2.2 → 新版本）；
+ * 之后的版本变化都看存档里的版本号，不再用这个常量。
+ */
+export const LEGACY_VERSION = '2.2.2';
 
 export const GAME_TAGLINE = '军 → 赢² → 水³ → Lec → OLD FIVE';
 

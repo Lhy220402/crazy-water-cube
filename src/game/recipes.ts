@@ -37,15 +37,23 @@ export interface Recipe {
 }
 
 export const PRODUCTS: Readonly<Record<string, SpecialProduct>> = {
+  // 内部 id 保持 'sui-jun' 不变（写进存档），v2.3 只把显示名改成「水军」
   'sui-jun': {
-    entry: { id: 'sui-jun', name: '隋军', rarity: 'rare', kind: 'special', hue: 208, hue2: 184 },
+    entry: { id: 'sui-jun', name: '水军', rarity: 'rare', kind: 'special', hue: 208, hue2: 184 },
     points: 64,
-    buff: { id: 'sui-jun', label: '隋军·蓄水', mult: 2, moves: 8 },
+    buff: { id: 'sui-jun', label: '水军·蓄水', mult: 2, moves: 8 },
   },
   'sui-jun-ring': {
-    entry: { id: 'sui-jun-ring', name: '隋军·环', rarity: 'legend', kind: 'special', hue: 232, hue2: 260 },
+    entry: { id: 'sui-jun-ring', name: '水军·环', rarity: 'legend', kind: 'special', hue: 232, hue2: 260 },
     points: 128,
-    buff: { id: 'sui-jun-ring', label: '隋军·洪峰', mult: 3, moves: 12 },
+    buff: { id: 'sui-jun-ring', label: '水军·洪峰', mult: 3, moves: 12 },
+  },
+  // 隋 + 钢 → 水缸：传说级，但要两条随机词条才凑得齐，给 +128；
+  // 增益与水军同一梯队（×2 / 8 步），符合「水缸和水军同一梯队」的设定
+  'shui-gang': {
+    entry: { id: 'shui-gang', name: '水缸', rarity: 'legend', kind: 'special', hue: 172, hue2: 200 },
+    points: 128,
+    buff: { id: 'shui-gang', label: '水缸·盛水', mult: 2, moves: 8 },
   },
   'ji-ying-ying': {
     entry: { id: 'ji-ying-ying', name: '记赢赢', rarity: 'legend', kind: 'special', hue: 292, hue2: 264 },
@@ -53,7 +61,7 @@ export const PRODUCTS: Readonly<Record<string, SpecialProduct>> = {
     buff: { id: 'ji-ying-ying', label: '记赢赢·长赢', mult: 2, moves: -1 },
     trueWin: true,
   },
-  // Li + Na → 李娜：跟隋军同一梯队（×2 / 8 步），分数略高以匹配两条稀有词条的门槛
+  // Li + Na → 李娜：跟水军同一梯队（×2 / 8 步），分数略高以匹配两条稀有词条的门槛
   lina: {
     entry: { id: 'lina', name: '李娜', rarity: 'legend', kind: 'special', hue: 46, hue2: 68 },
     points: 128,
@@ -64,6 +72,7 @@ export const PRODUCTS: Readonly<Record<string, SpecialProduct>> = {
 export const RECIPES: readonly Recipe[] = [
   { a: { variant: 'sui' }, b: { rank: 0 }, product: 'sui-jun' },
   { a: { variant: 'sui-ring' }, b: { rank: 0 }, product: 'sui-jun-ring' },
+  { a: { variant: 'sui' }, b: { variant: 'gang' }, product: 'shui-gang' },
   { a: { variant: 'li' }, b: { variant: 'na' }, product: 'lina' },
   { a: { variant: 'ji' }, b: { rank: 1 }, product: 'ji-ying-ying' },
 ];

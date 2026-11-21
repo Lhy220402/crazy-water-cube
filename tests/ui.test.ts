@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { JSDOM, VirtualConsole } from 'jsdom';
+import { GAME_VERSION } from '../src/game/meta.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const html = await readFile(resolve(root, 'dist/2048.html'), 'utf8');
@@ -45,7 +46,13 @@ async function boot(
   saved?: unknown,
   codex?: unknown,
   theme?: string,
-  options: { skipIntro?: boolean; best?: number; sound?: 'on' | 'off' } = {},
+  options: {
+    skipIntro?: boolean;
+    best?: number;
+    sound?: 'on' | 'off';
+    /** 上次进入游戏的版本；null = 没有版本记录（模拟从旧版升级） */
+    version?: string | null;
+  } = {},
 ): Promise<Harness> {
   const virtualConsole = new VirtualConsole();
   const errors: string[] = [];
@@ -67,6 +74,10 @@ async function boot(
       if (theme !== undefined) window.localStorage.setItem('jun2048.theme', theme);
       if (options.best !== undefined) window.localStorage.setItem('jun2048.best', String(options.best));
       if (options.sound !== undefined) window.localStorage.setItem('jun2048.sound', options.sound);
+      // 默认视为「当前版本已经打开过」；测版本更新弹窗时传 version: '2.2.2' 或 null
+      if (options.version !== null) {
+        window.localStorage.setItem('jun2048.version', options.version ?? GAME_VERSION);
+      }
     },
   });
   const win = dom.window as unknown as Window & typeof globalThis;
@@ -276,7 +287,7 @@ test('记 + 赢² → 记赢赢：真通关弹层、永久 ×2 增益徽章', as
   h.close();
 });
 
-test('隋 + 军 → 隋军：特殊收录 + 解释弹层 + ×2/8步 增益', async () => {
+test('隋 + 军 → 水军（原隋军）：特殊收录 + 解释弹层 + ×2/8步 增益', async () => {
   const h = await boot(
     saved([5, 0, ...EMPTY16.slice(2)], { variants: ['sui', null, ...EMPTY16.slice(2).map(() => null)], won: true }),
   );
@@ -285,12 +296,12 @@ test('隋 + 军 → 隋军：特殊收录 + 解释弹层 + ×2/8步 增益', asy
   await sleep(60);
   assert.equal(h.app.state.score, 64);
   const tile = h.$('#tiles').querySelector('.tile[data-entry="sui-jun"]');
-  assert.ok(tile, '棋盘上应有隋军方块');
+  assert.ok(tile, '棋盘上应有水军方块（内部 id 仍是 sui-jun）');
   assert.equal(tile.getAttribute('data-special'), '1');
   assert.equal(h.app.codex['sui-jun'], 1);
   assert.equal(h.$('#overlay').hidden, false);
   assert.match(h.$('#overlay-eyebrow').textContent ?? '', /特殊合成/);
-  assert.match(h.$('#overlay-title').textContent ?? '', /隋军/);
+  assert.match(h.$('#overlay-title').textContent ?? '', /水军/);
   assert.match(h.$('#buffs').textContent ?? '', /×2/);
   assert.match(h.$('#buffs').textContent ?? '', /8步/);
   h.close();
@@ -346,19 +357,19 @@ test('首次抽到词条：弹解释卡、写入图鉴，名字此刻才可见',
 test('重复抽到已收录词条不重复弹解释层', async () => {
   const all = {
     sui: 1, 'eyu-qi': 1, 'sui-ring': 1, 'eyu-shi-jun': 1, ji: 1,
-    'sui-jun': 1, 'sui-jun-ring': 1, 'ji-ying-ying': 1, lina: 1,
+    'sui-jun': 1, 'sui-jun-ring': 1, 'ji-ying-ying': 1, lina: 1, 'shui-gang': 1,
     bayi: 1, hongmei: 1, jinshan: 1, fuli: 1, li: 1, na: 1, xiaoming: 1, yanzi: 1, doubao: 1,
-    biao: 1, huicheng: 1, xiaoyu: 1,
+    biao: 1, huicheng: 1, xiaoyu: 1, gang: 1, weihai: 1, dingjian: 1, junzhu: 1,
   };
   const h = await boot(saved([4, 4, ...EMPTY16.slice(2)], { won: true }), all);
-  assert.equal(Object.keys(h.app.codex).length, 21, '读档应恢复全部收录（含特殊产物）');
+  assert.equal(Object.keys(h.app.codex).length, 26, '读档应恢复全部收录（含特殊产物）');
   h.app.move('left');
   await settle(h);
   await sleep(120);
   assert.equal(h.$('#overlay').hidden, true, '重复词条不弹解释层');
   const counts = Object.values(h.app.codex).reduce((sum, n) => sum + n, 0);
-  assert.equal(counts, 22, '重复抽到也要累加出现次数');
-  assert.equal(Object.keys(h.app.codex).length, 21);
+  assert.equal(counts, 27, '重复抽到也要累加出现次数');
+  assert.equal(Object.keys(h.app.codex).length, 26);
   h.close();
 });
 
@@ -377,7 +388,8 @@ test('图鉴词条页：没收集前完全空白、不剧透名字和数量', as
     '鳄鱼鳍',
     '鳄食菌',
     '记',
-    '隋军',
+    '水军',
+    '水缸',
     '记赢赢',
     '八一',
     '红梅',
@@ -392,6 +404,10 @@ test('图鉴词条页：没收集前完全空白、不剧透名字和数量', as
     '彪',
     '会成',
     '🌧️',
+    '钢',
+    '威海',
+    '钉剑',
+    '君竹',
   ]) {
     assert.equal(text.includes(name), false, `不能剧透「${name}」`);
   }
@@ -406,7 +422,7 @@ test('图鉴合成链页：固定链 + 词条入口 + 特殊配方（产物未�
   await sleep(30);
   assert.equal(h.$('#sheet').hidden, false);
   const rows = h.$('#chain').querySelectorAll('.chain__row');
-  assert.equal(rows.length, 8, '4 固定 + 1 词条入口 + 3 可见特殊配方（真通关配方隐藏）');
+  assert.equal(rows.length, 9, '4 固定 + 1 词条入口 + 4 可见特殊配方（真通关配方隐藏）');
   const text = h.$('#chain').textContent ?? '';
   for (const name of ['军', '赢', '水', 'Lec', 'OLD FIVE', '随机词条']) {
     assert.ok(text.includes(name), `合成链应包含 ${name}`);
@@ -415,9 +431,12 @@ test('图鉴合成链页：固定链 + 词条入口 + 特殊配方（产物未�
   assert.ok(text.includes('Li'), 'Li + Na 配方材料应公开');
   assert.ok(text.includes('Na'), 'Li + Na 配方材料应公开');
   assert.equal(text.includes('李娜'), false, '李娜未触发前不剧透');
-  assert.equal(h.$('#chain').querySelectorAll('.chain__row--recipe').length, 3);
-  assert.equal(h.$('#chain').querySelectorAll('.mini--mystery').length, 4, '词条入口 + 3 个未触发产物都打码');
-  assert.equal(text.includes('隋军'), false, '特殊产物未触发前不剧透');
+  // 隋 + 钢 的配方材料公开，产物水缸未触发前打码
+  assert.ok(text.includes('钢'), '隋 + 钢 配方材料应公开');
+  assert.equal(text.includes('水缸'), false, '水缸未触发前不剧透');
+  assert.equal(h.$('#chain').querySelectorAll('.chain__row--recipe').length, 4);
+  assert.equal(h.$('#chain').querySelectorAll('.mini--mystery').length, 5, '词条入口 + 4 个未触发产物都打码');
+  assert.equal(text.includes('水军'), false, '特殊产物未触发前不剧透');
   assert.equal(text.includes('记'), false, '真通关配方行首次触发前完全隐藏');
   assert.equal(text.includes('记赢赢'), false);
   assert.equal(h.$('#sheet-sub').textContent?.includes('随机抽一条词条'), true);
@@ -432,11 +451,11 @@ test('特殊产物触发后，合成链页揭示产物与增益；真通关配�
   h.app.openGuide('chain');
   await sleep(30);
   const text = h.$('#chain').textContent ?? '';
-  assert.ok(text.includes('隋军'), '已触发的特殊产物应揭示名字');
+  assert.ok(text.includes('水军'), '已触发的特殊产物应揭示名字');
   assert.match(text, /×2\/8步/);
   assert.ok(text.includes('？？？'), '未触发的产物仍打码');
   assert.equal(text.includes('记赢赢'), false, '真通关配方触发前仍隐藏');
-  assert.equal(h.$('#chain').querySelectorAll('.chain__row').length, 8);
+  assert.equal(h.$('#chain').querySelectorAll('.chain__row').length, 9);
   h.close();
 
   // 李娜触发之后揭示产物与增益
@@ -446,9 +465,20 @@ test('特殊产物触发后，合成链页揭示产物与增益；真通关配�
   const textLina = hl.$('#chain').textContent ?? '';
   assert.ok(textLina.includes('李娜'), '已触发的李娜应揭示名字');
   assert.match(textLina, /×2\/8步/);
-  assert.equal(hl.$('#chain').querySelectorAll('.chain__row').length, 8);
-  assert.equal(hl.$('#chain').querySelectorAll('.mini--mystery').length, 3);
+  assert.equal(hl.$('#chain').querySelectorAll('.chain__row').length, 9);
+  assert.equal(hl.$('#chain').querySelectorAll('.mini--mystery').length, 4);
   hl.close();
+
+  // 水缸触发之后揭示产物与增益
+  const hg = await boot(undefined, { 'shui-gang': 1 });
+  hg.app.openGuide('chain');
+  await sleep(30);
+  const textGang = hg.$('#chain').textContent ?? '';
+  assert.ok(textGang.includes('水缸'), '已触发的水缸应揭示名字');
+  assert.match(textGang, /×2\/8步/);
+  assert.equal(hg.$('#chain').querySelectorAll('.chain__row').length, 9);
+  assert.equal(hg.$('#chain').querySelectorAll('.mini--mystery').length, 4);
+  hg.close();
 
   // 真通关触发之后才揭示整行配方
   const h2 = await boot(undefined, { 'ji-ying-ying': 1 });
@@ -457,7 +487,7 @@ test('特殊产物触发后，合成链页揭示产物与增益；真通关配�
   const text2 = h2.$('#chain').textContent ?? '';
   assert.ok(text2.includes('记赢赢'), '真通关后应揭示记赢赢');
   assert.match(text2, /真通关/);
-  assert.equal(h2.$('#chain').querySelectorAll('.chain__row').length, 9);
+  assert.equal(h2.$('#chain').querySelectorAll('.chain__row').length, 10);
   h2.close();
 });
 
@@ -509,6 +539,8 @@ test('增益到期后徽章消失；增益期间飘分加强', async () => {
     }),
   );
   assert.equal(h.$('#buffs').hidden, false, '读档应恢复增益徽章');
+  // v2.3 改名：旧存档里的「隋军·蓄水」按当前定义刷新成「水军·蓄水」
+  assert.match(h.$('#buffs').textContent ?? '', /水军·蓄水/);
   h.app.move('left');
   await settle(h);
   assert.equal(h.app.state.score, 8, '4 × 2');
@@ -716,6 +748,67 @@ test('开场界面：读档死局先不弹结束层，进入游戏后才弹', as
   h.close();
 });
 
+test('版本更新弹窗：老玩家升级后进入游戏弹一次，只显示版本号变动', async () => {
+  // 有棋局存档但没有版本记录 = 从 2.2.2 升级上来的老玩家（启动时按 LEGACY_VERSION 算）
+  const h = await boot(
+    saved([0, 0, ...EMPTY16.slice(2)], { score: 12, moves: 3 }),
+    undefined,
+    undefined,
+    { skipIntro: false, version: null },
+  );
+  // 开场界面阶段不弹
+  await sleep(60);
+  assert.equal(h.$('#overlay').hidden, true, '开场界面阶段不弹版本更新');
+  h.$('#intro-start').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(60);
+  assert.equal(h.$('#overlay').hidden, false, '进入游戏时应弹版本更新');
+  assert.match(h.$('#overlay-eyebrow').textContent ?? '', /版本更新/);
+  assert.match(h.$('#overlay-title').textContent ?? '', /版本已更新/);
+  assert.equal(h.$('#overlay-text').textContent, `v2.2.2 → v${GAME_VERSION}`, '只显示版本号变动');
+  // 弹层打开期间棋盘输入被忽略
+  const before = JSON.stringify(ranks(h));
+  h.app.move('left');
+  assert.equal(h.app.state.moves, 3, '版本弹层打开时棋盘不应响应');
+  // 关掉后进入正常游戏，并记下当前版本
+  h.$('#overlay-actions .pill--primary').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(OVERLAY + 80);
+  assert.equal(h.$('#overlay').hidden, true);
+  assert.equal(h.win.localStorage.getItem('jun2048.version'), GAME_VERSION);
+  assert.equal(JSON.stringify(ranks(h)), before, '关掉版本弹层不应改变棋盘');
+  h.close();
+});
+
+test('版本更新弹窗：新玩家不弹，同一版本重开也不弹', async () => {
+  const h = await boot(); // boot 默认已写入当前版本：视为看过
+  await sleep(60);
+  assert.equal(h.$('#overlay').hidden, true);
+  assert.equal(h.win.localStorage.getItem('jun2048.version'), GAME_VERSION);
+  h.close();
+
+  // 全新玩家：没有任何存档 / 版本记录 → 不弹，但启动时记下当前版本
+  const h2 = await boot(undefined, undefined, undefined, { version: null });
+  await sleep(60);
+  assert.equal(h2.$('#overlay').hidden, true, '全新玩家不应弹「从 2.2.2 更新」');
+  assert.equal(h2.win.localStorage.getItem('jun2048.version'), GAME_VERSION);
+  h2.close();
+});
+
+test('版本更新弹窗：关掉后接着弹读档死局', async () => {
+  const dead = [0, 1, 2, 3, 1, 2, 3, 4, 2, 3, 4, 0, 3, 4, 0, 1];
+  const h = await boot(saved(dead, { score: 88, moves: 42 }), undefined, undefined, {
+    skipIntro: false,
+    version: '2.2.2',
+  });
+  await sleep(60);
+  h.$('#intro-start').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(60);
+  assert.match(h.$('#overlay-title').textContent ?? '', /版本已更新/);
+  h.$('#overlay-actions .pill--primary').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(OVERLAY + 120);
+  assert.match(h.$('#overlay-title').textContent ?? '', /无处可合/, '版本弹层关掉后应接续结束层');
+  h.close();
+});
+
 test('Li + Na → 李娜：特殊收录 + 解释层 + ×2/8步 增益', async () => {
   const h = await boot(
     saved([5, 5, ...EMPTY16.slice(2)], {
@@ -788,6 +881,68 @@ test('v2.2 新增词条：彪 / 会成 / 🌧️ 的稀有角标、色相与 emo
   const card = h.$('#codex').querySelector<HTMLElement>('.card[data-entry="xiaoyu"]');
   assert.ok(card, '图鉴里应有 🌧️ 卡片');
   assert.equal(card.querySelector('.card__desc')?.textContent, '这雨似乎不大\n这是小雨啊');
+  h.close();
+});
+
+test('v2.3 新增词条：钢 / 威海 / 钉剑 / 君竹 的角标、色相与 +隋 提示', async () => {
+  const variants = ['gang', 'weihai', 'dingjian', 'junzhu', ...EMPTY16.slice(4).map(() => null)];
+  const h = await boot(
+    saved([5, 5, 5, 5, ...EMPTY16.slice(4)], { variants, won: true }),
+    { gang: 1, weihai: 1, dingjian: 1, junzhu: 1 },
+  );
+  const gang = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="gang"]');
+  assert.ok(gang, '棋盘上应有钢');
+  assert.equal(gang.querySelector('.tile__label--codex')?.textContent, '钢');
+  assert.equal(gang.querySelector('.tile__label--codex')?.classList.contains('is-s1'), true);
+  assert.equal(gang.querySelector('.tile__rarity')?.textContent, '稀');
+  assert.equal(gang.querySelector('.tile__recipe')?.textContent, '+隋');
+  assert.equal(gang.style.getPropertyValue('--hue'), '205');
+  assert.equal(gang.style.getPropertyValue('--hue2'), '235');
+
+  const weihai = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="weihai"]');
+  assert.ok(weihai);
+  assert.equal(weihai.querySelector('.tile__label--codex')?.textContent, '威海');
+  assert.equal(weihai.style.getPropertyValue('--hue'), '188');
+  const dingjian = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="dingjian"]');
+  assert.ok(dingjian);
+  assert.equal(dingjian.querySelector('.tile__label--codex')?.textContent, '钉剑');
+  assert.equal(dingjian.style.getPropertyValue('--hue'), '30');
+  const junzhu = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="junzhu"]');
+  assert.ok(junzhu);
+  assert.equal(junzhu.querySelector('.tile__label--codex')?.textContent, '君竹');
+  assert.equal(junzhu.querySelector('.tile__rarity')?.textContent, '稀');
+
+  // 图鉴卡片文案按用户原文
+  h.app.openGuide('codex');
+  await sleep(30);
+  const card = h.$('#codex').querySelector<HTMLElement>('.card[data-entry="dingjian"]');
+  assert.ok(card, '图鉴里应有钉剑卡片');
+  assert.equal(card.querySelector('.card__desc')?.textContent, '钉子怎么能做剑？');
+  h.close();
+});
+
+test('隋 + 钢 → 水缸：特殊收录 + 解释弹层 + ×2/8步 增益', async () => {
+  const h = await boot(
+    saved([5, 5, ...EMPTY16.slice(2)], {
+      variants: ['sui', 'gang', ...EMPTY16.slice(2).map(() => null)],
+      won: true,
+    }),
+  );
+  h.app.move('left');
+  await settle(h);
+  await sleep(60);
+  assert.equal(h.app.state.score, 128);
+  const tile = h.$('#tiles').querySelector('.tile[data-entry="shui-gang"]');
+  assert.ok(tile, '棋盘上应有水缸方块');
+  assert.equal(tile.getAttribute('data-special'), '1');
+  assert.equal(tile.querySelector('.tile__rarity')?.textContent, '特');
+  assert.equal(h.app.codex['shui-gang'], 1);
+  assert.equal(h.$('#overlay').hidden, false);
+  assert.match(h.$('#overlay-eyebrow').textContent ?? '', /特殊合成/);
+  assert.match(h.$('#overlay-title').textContent ?? '', /水缸/);
+  assert.match(h.$('#overlay-text').textContent ?? '', /一种容器/);
+  assert.match(h.$('#buffs').textContent ?? '', /×2/);
+  assert.match(h.$('#buffs').textContent ?? '', /8步/);
   h.close();
 });
 

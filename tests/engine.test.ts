@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { TIERS, allEntries, createConfig, entryById } from '../src/game/config.ts';
 import { LORE, LORE_FALLBACK, loreOf } from '../src/game/lore.ts';
 import { buffMultiplier, parseBuffs, tickBuffs } from '../src/game/buffs.ts';
+import { specialProduct } from '../src/game/recipes.ts';
 import {
   canMove,
   cellIndex,
@@ -274,17 +275,17 @@ test('任意两条词条都能合（稀有度不影响配对），结果全池�
     ],
     config,
   );
-  // 权重总和 37；0.5×37=18.5 落在「金山」
+  // 权重总和 45；0.5×45=22.5 落在「Li」（21–23 区间）
   const result = move(state, 'left', config, fixedRng(0.5));
   assert.equal(result.moved, true);
   assert.equal(result.merges[0]!.rank, config.codexRank);
   assert.equal(result.codexDraws.length, 1);
-  assert.equal(result.codexDraws[0]!.entryId, 'jinshan');
+  assert.equal(result.codexDraws[0]!.entryId, 'li');
   const produced = result.state.cells.find((tile) => tile?.rank === config.codexRank);
-  assert.equal(produced?.variant, 'jinshan');
+  assert.equal(produced?.variant, 'li');
 });
 
-test('词条按权重随机，允许重复，17 条都能抽到', () => {
+test('词条按权重随机，允许重复，21 条都能抽到', () => {
   const config = createConfig();
   const seen = new Map<string, number>();
   for (let i = 0; i < 500; i += 1) {
@@ -305,18 +306,22 @@ test('词条按权重随机，允许重复，17 条都能抽到', () => {
   assert.deepEqual([...seen.keys()].sort(), [
     'bayi',
     'biao',
+    'dingjian',
     'doubao',
     'eyu-qi',
     'eyu-shi-jun',
     'fuli',
+    'gang',
     'hongmei',
     'huicheng',
     'ji',
     'jinshan',
+    'junzhu',
     'li',
     'na',
     'sui',
     'sui-ring',
+    'weihai',
     'xiaoming',
     'xiaoyu',
     'yanzi',
@@ -326,7 +331,7 @@ test('词条按权重随机，允许重复，17 条都能抽到', () => {
   assert.ok(seen.get('sui')! > seen.get('ji')!);
 });
 
-test('特殊配方：Li + Na → 李娜（+128，×2/8步，和隋军同一梯队）', () => {
+test('特殊配方：Li + Na → 李娜（+128，×2/8步，和水军同一梯队）', () => {
   const config = createConfig();
   const state = board(
     [
@@ -387,12 +392,12 @@ test('特殊配方：Li + Na → 李娜（+128，×2/8步，和隋军同一梯�
   assert.equal(followUp.merges[0]!.gained, 64);
 });
 
-test('每条词条与特殊产物都有解释文案（图鉴池 17 + 特殊产物 4）', () => {
+test('每条词条与特殊产物都有解释文案（图鉴池 21 + 特殊产物 5）', () => {
   const config = createConfig();
-  assert.equal(config.codex!.entries.length, 17);
-  assert.equal(config.codex!.specials.length, 4);
+  assert.equal(config.codex!.entries.length, 21);
+  assert.equal(config.codex!.specials.length, 5);
   const entries = allEntries(config);
-  assert.equal(entries.length, 21);
+  assert.equal(entries.length, 26);
   for (const entry of entries) {
     const text = loreOf(entry.id);
     assert.ok(text.length > 0, `${entry.id} 缺解释`);
@@ -403,9 +408,16 @@ test('每条词条与特殊产物都有解释文案（图鉴池 17 + 特殊产�
   assert.equal(LORE.biao, '彪！');
   assert.equal(LORE.huicheng, '会成吗？');
   assert.equal(LORE.xiaoyu, '这雨似乎不大\n这是小雨啊');
+  // v2.3 新词条 / 水缸 / 水军改名：全部按用户原文
+  assert.equal(LORE.gang, '一种金属');
+  assert.equal(LORE.weihai, '一个地名');
+  assert.equal(LORE.dingjian, '钉子怎么能做剑？');
+  assert.equal(LORE.junzhu, '竹子中的皇帝是吗');
+  assert.equal(LORE['shui-gang'], '一种容器');
+  assert.equal(LORE['sui-jun'], '水里的军队');
 });
 
-test('特殊配方：隋 + 军 → 隋军（+64，挂 ×2/8步 增益）', () => {
+test('特殊配方：隋 + 军 → 水军（+64，挂 ×2/8步 增益；内部 id 仍是 sui-jun）', () => {
   const config = createConfig();
   const state = board(
     [
@@ -424,9 +436,11 @@ test('特殊配方：隋 + 军 → 隋军（+64，挂 ×2/8步 增益）', () =>
   assert.equal(merge.gained, 64);
   assert.equal(result.codexDraws.length, 0, '特殊产物不是随机抽取');
   assert.deepEqual(result.state.buffs, [
-    { id: 'sui-jun', label: '隋军·蓄水', mult: 2, movesLeft: 8 },
+    { id: 'sui-jun', label: '水军·蓄水', mult: 2, movesLeft: 8 },
   ]);
   assert.equal(result.justTrueWon, false);
+  // 改名只动显示名，id 与增益数值都不变（存档兼容）
+  assert.equal(specialProduct('sui-jun')!.entry.name, '水军');
 });
 
 test('特殊配方无序：军撞隋也一样；配方优先于普通判定', () => {
@@ -447,7 +461,7 @@ test('特殊配方无序：军撞隋也一样；配方优先于普通判定', ()
   assert.deepEqual(ranks(result.state)[0]!.slice(0, 2), [5, 0]);
 });
 
-test('特殊配方：圈隋 + 军 → 隋军·环（+128，×3/12步）', () => {
+test('特殊配方：圈隋 + 军 → 水军·环（+128，×3/12步）', () => {
   const config = createConfig();
   const state = board(
     [
@@ -462,8 +476,72 @@ test('特殊配方：圈隋 + 军 → 隋军·环（+128，×3/12步）', () => 
   assert.equal(result.merges[0]!.variant, 'sui-jun-ring');
   assert.equal(result.merges[0]!.gained, 128);
   assert.deepEqual(result.state.buffs, [
-    { id: 'sui-jun-ring', label: '隋军·洪峰', mult: 3, movesLeft: 12 },
+    { id: 'sui-jun-ring', label: '水军·洪峰', mult: 3, movesLeft: 12 },
   ]);
+});
+
+test('特殊配方：隋 + 钢 → 水缸（+128，×2/8步，与水军同一梯队）', () => {
+  const config = createConfig();
+  const state = board(
+    [
+      [[5, 'sui'], [5, 'gang'], null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    config,
+  );
+  const result = move(state, 'left', config, fixedRng(0));
+  assert.equal(result.moved, true);
+  assert.equal(result.merges.length, 1);
+  const merge = result.merges[0]!;
+  assert.equal(merge.variant, 'shui-gang');
+  assert.equal(merge.rank, config.codexRank);
+  assert.equal(merge.gained, 128);
+  assert.equal(result.codexDraws.length, 0, '特殊产物不是随机抽取');
+  assert.deepEqual(result.state.buffs, [
+    { id: 'shui-gang', label: '水缸·盛水', mult: 2, movesLeft: 8 },
+  ]);
+  assert.equal(result.justTrueWon, false);
+  // 与水军同梯队：×2 / 8 步
+  assert.equal(specialProduct('shui-gang')!.buff.mult, specialProduct('sui-jun')!.buff.mult);
+  assert.equal(specialProduct('shui-gang')!.buff.moves, specialProduct('sui-jun')!.buff.moves);
+
+  // 无序：钢撞隋也一样触发
+  const reversed = move(
+    board(
+      [
+        [null, null, [5, 'gang'], [5, 'sui']],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      config,
+    ),
+    'right',
+    config,
+    fixedRng(0),
+  );
+  assert.equal(reversed.merges[0]!.variant, 'shui-gang');
+
+  // 水缸也是词条级：可以和任意词条继续合成
+  const followUp = move(
+    board(
+      [
+        [[5, 'shui-gang'], [5, 'weihai'], null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      config,
+    ),
+    'left',
+    config,
+    fixedRng(0),
+  );
+  assert.equal(followUp.merges.length, 1);
+  assert.equal(followUp.codexDraws.length, 1);
+  assert.equal(followUp.merges[0]!.gained, 64);
 });
 
 test('特殊配方：记 + 赢² → 记赢赢，真通关只触发一次，永久 ×2', () => {
@@ -569,7 +647,7 @@ test('增益让得分翻倍，并逐步倒数到过期', () => {
       ],
       config,
     ),
-    buffs: [{ id: 'sui-jun', label: '隋军·蓄水', mult: 2, movesLeft: 2 }],
+    buffs: [{ id: 'sui-jun', label: '水军·蓄水', mult: 2, movesLeft: 2 }],
   };
   const first = move(state, 'left', config, fixedRng(0.99));
   assert.equal(first.scoreGain, 8); // 4 × 2
@@ -592,7 +670,7 @@ test('新增益创建当步不生效也不消耗，下一步才开始', () => {
     config,
   );
   const result = move(state, 'left', config, fixedRng(0));
-  // 隋军 +64（无倍率），同一步的 军×2 仍是 +4 而不是 +8
+  // 水军 +64（无倍率），同一步的 军×2 仍是 +4 而不是 +8
   assert.equal(result.scoreGain, 64 + 4);
   assert.equal(result.state.buffs[0]!.movesLeft, 8);
   // 下一步合成开始吃 ×2
@@ -827,6 +905,23 @@ test('词条存档校验：未知词条 id 判坏档；v1/v2 旧档兼容', () =
   // 特殊产物 id 合法
   assert.ok(deserialize({ ...base, variants: ['sui-jun', ...base.variants.slice(1)] }, config));
   assert.ok(deserialize({ ...base, variants: ['lina', ...base.variants.slice(1)] }, config));
+
+  // v2.3 改名：旧档里的「隋军·蓄水」快照文案按当前定义刷新成「水军·蓄水」，倍率与步数不变
+  const renamed = deserialize(
+    { ...base, buffs: [{ id: 'sui-jun', label: '隋军·蓄水', mult: 2, movesLeft: 2 }] },
+    config,
+  );
+  assert.ok(renamed);
+  assert.deepEqual(renamed.buffs, [
+    { id: 'sui-jun', label: '水军·蓄水', mult: 2, movesLeft: 2 },
+  ]);
+  // 未知 id 的自定义增益保持原样，不因刷新被丢掉或报错
+  const unknownBuff = deserialize(
+    { ...base, buffs: [{ id: 'custom', label: '自定义', mult: 2, movesLeft: 1 }] },
+    config,
+  );
+  assert.ok(unknownBuff);
+  assert.deepEqual(unknownBuff.buffs[0], { id: 'custom', label: '自定义', mult: 2, movesLeft: 1 });
 
   // v2：没有 trueWon / buffs 字段 → 默认值
   const v2 = { ...base, v: 2 } as Record<string, unknown>;

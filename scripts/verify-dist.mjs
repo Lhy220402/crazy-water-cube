@@ -30,6 +30,16 @@ check(html.includes('军') && html.includes('赢') && html.includes('Lec'), '缺
 check(html.includes('真通关了吗') && html.includes('记赢赢'), '缺少假通关/真通关文案');
 check(html.includes('李娜') && html.includes('豆包AI'), '缺少新增词条/配方文案');
 check(html.includes('彪') && html.includes('会成') && html.includes('🌧️'), '缺少 v2.2 新增词条文案');
+// v2.3：水军（原隋军改名）/ 水缸配方 / 四条新词条
+check(
+  html.includes('水军') && html.includes('水缸'),
+  '缺少 v2.3 的水军改名 / 水缸配方文案',
+);
+check(
+  html.includes('钢') && html.includes('威海') && html.includes('钉剑') && html.includes('君竹'),
+  '缺少 v2.3 新增词条（钢 / 威海 / 钉剑 / 君竹）',
+);
+check(html.includes('版本已更新') && html.includes('.version'), '缺少版本更新弹窗（jun2048.version）');
 check(html.includes('id="intro"') && html.includes('id="intro-start"'), '缺少开场界面');
 check(html.includes('id="btn-sound"'), '缺少声音开关');
 // favicon：三滴水滴正三角，SVG 主 + PNG 兜底，都必须是 data URI（无外部图标）
@@ -49,7 +59,8 @@ check(html.includes('prefers-color-scheme'), '缺少明暗外观适配');
 check(/data-theme=["']?dark/.test(html), '缺少手动深色模式覆盖');
 check(html.length > 20_000, '文件过小，疑似构建不完整');
 check(/__jun2048/.test(html), '缺少 App 入口');
-// v2.2：合成音效必须内联（data URI + WebAudio 解码），不能引外部音频
+// 合成音效必须内联（data URI + WebAudio 解码），不能引外部音频
+// v2.3 曾尝试三段猫叫剪辑，用户听完不满意，已完整回滚到 v2.2.2 的单声猫叫
 check(/data:audio\/mpeg;base64,[A-Za-z0-9+/=]{5000,}/.test(html), '缺少内联的合成音效');
 check(html.includes('decodeAudioData'), '音频应通过 WebAudio 解码内联音效');
 

@@ -3,7 +3,7 @@
  * 外部只需要 config / rng，因此可以单测、可以换棋盘尺寸、可以扩展等级与词条。
  *
  * 配对规则（单步内每枚方块最多参与一次合成，不连锁）：
- *   1. 特殊配方优先：隋+军→隋军、隋·环+军→隋军·环、记+赢²→记赢赢（无序匹配）
+ *   1. 特殊配方优先：隋+军→水军、隋·环+军→水军·环、隋+钢→水缸、记+赢²→记赢赢（无序匹配）
  *   2. 同级相碰：普通等级升一级；OLD FIVE 与词条级、任意两条词条 → 全池随机抽一条
  * 增益：特殊合成挂 buff，后续若干步所有合成得分乘倍率（多个乘算叠加）。
  * 通关：首次合出 OLD FIVE = 假通关（won）；首次合出 记赢赢 = 真通关（trueWon）。
@@ -491,7 +491,12 @@ export function deserialize(raw: unknown, config: GameConfig): GameState | null 
     nextId,
     won: data.won === true,
     trueWon: data.trueWon === true,
-    buffs: parseBuffs(data.buffs),
+    // 旧档里的增益 label 是当时的快照文案（如「隋军·蓄水」）；改名后按当前定义刷新文案，
+    // 只改 label，倍率和剩余步数照旧，旧棋盘不会因此作废。
+    buffs: parseBuffs(data.buffs).map((buff) => {
+      const label = specialProduct(buff.id)?.buff.label;
+      return label !== undefined && label !== buff.label ? { ...buff, label } : buff;
+    }),
     over: false,
   };
   state.over = !canMove(state, config);

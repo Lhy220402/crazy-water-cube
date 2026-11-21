@@ -1,12 +1,12 @@
 /**
- * 居中弹层：假通关 / 真通关 / 结束 / 确认 / 词条解释 / 关于。
+ * 居中弹层：假通关 / 真通关 / 结束 / 确认 / 词条解释 / 关于 / 版本更新。
  * 打开时禁止棋盘移动（由 app 的 dialogOpen 统一判断）；遮罩点击关闭；焦点恢复。
  */
 import { cancelTimer, el, later } from './dom.ts';
 
 const OVERLAY_MS = 240;
 
-export type OverlayKind = 'win' | 'truewin' | 'over' | 'confirm' | 'lore' | 'about';
+export type OverlayKind = 'win' | 'truewin' | 'over' | 'confirm' | 'lore' | 'about' | 'update';
 
 export interface OverlayAction {
   label: string;
@@ -25,6 +25,8 @@ export interface OverlayContent {
   actions: OverlayAction[];
   burst?: boolean;
   focus?: 'primary' | 'first';
+  /** 关闭后回调（版本更新弹窗用它接续「进入游戏」流程；遮罩 / Esc 关闭也会触发） */
+  onClose?: () => void;
 }
 
 export interface OverlayView {
@@ -53,6 +55,7 @@ export function createOverlay(opts: OverlayOptions): OverlayView {
   let kind: OverlayKind | null = null;
   let hideTimer: number | null = null;
   let focusBefore: HTMLElement | null = null;
+  let afterClose: (() => void) | null = null;
 
   function burstConfetti(big: boolean): void {
     burst.textContent = '';
@@ -86,6 +89,7 @@ export function createOverlay(opts: OverlayOptions): OverlayView {
       focusBefore = doc.activeElement instanceof HTMLElement ? doc.activeElement : null;
     }
     kind = content.kind;
+    afterClose = content.onClose ?? null;
     eyebrow.textContent = content.eyebrow;
     title.textContent = content.title;
     title.classList.toggle('panel__title--win', content.kind === 'win');
@@ -139,6 +143,8 @@ export function createOverlay(opts: OverlayOptions): OverlayView {
   function close(): void {
     if (kind === null) return;
     kind = null;
+    const after = afterClose;
+    afterClose = null;
     overlay.classList.remove('is-open');
     overlay.setAttribute('aria-hidden', 'true');
     if (hideTimer !== null) cancelTimer(w, hideTimer);
@@ -149,6 +155,8 @@ export function createOverlay(opts: OverlayOptions): OverlayView {
     }, OVERLAY_MS);
     if (focusBefore?.isConnected) focusBefore.focus({ preventScroll: true });
     focusBefore = null;
+    // 关闭后回调放在最后：如果它又打开一个弹层，show() 会取消上面的隐藏定时器，弹层直接换内容
+    if (after) after();
   }
 
   function onScrim(): void {

@@ -27,9 +27,15 @@ export const LORE: Readonly<Record<string, string>> = {
   huicheng: '会成吗？',
   // 🌧️ 的解释是两行，弹层与图鉴卡片都保留换行（CSS white-space: pre-line）
   xiaoyu: '这雨似乎不大\n这是小雨啊',
+  // v2.3 新增 4 条（用户原文）
+  gang: '一种金属',
+  weihai: '一个地名',
+  dingjian: '钉子怎么能做剑？',
+  junzhu: '竹子中的皇帝是吗',
   // 特殊合成产物
-  'sui-jun': '隋和军组队出征：接下来 8 步，所有合成得分 ×2。',
+  'sui-jun': '水里的军队',
   'sui-jun-ring': '666 一家齐上了',
+  'shui-gang': '一种容器',
   'ji-ying-ying': '记才会赢！',
   lina: 'Li 和 Na 拼在一起，就是冠军的名字：接下来 8 步，所有合成得分 ×2。',
 };

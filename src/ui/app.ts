@@ -33,6 +33,15 @@ import { createInput } from './input.ts';
 import { createIntro, type IntroView } from './intro.ts';
 import { createAudio } from './audio.ts';
 import { buildAbout } from './about.ts';
+import { GAME_VERSION, LEGACY_VERSION } from '../game/meta.ts';
+import {
+  detectVersionChange,
+  hasLegacyData,
+  readSeenVersion,
+  versionChangeText,
+  writeSeenVersion,
+  type VersionChange,
+} from './version.ts';
 
 export interface AppOptions {
   config?: GameConfig;
@@ -129,6 +138,22 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   let destroyed = false;
   /** 开场界面期间发现读档是死局：等玩家点「继续游戏」后再弹结束层 */
   let pendingGameOver = false;
+  /**
+   * 进入游戏时要弹的版本更新（启动时只读推导，不写存档）：
+   * 老玩家升级 / 换版本后第一次进入游戏弹一次，只显示版本号变动。
+   */
+  const seenVersion = readSeenVersion(kv, config.storageKey);
+  let pendingUpdate: VersionChange | null = detectVersionChange(
+    kv,
+    config.storageKey,
+    GAME_VERSION,
+    LEGACY_VERSION,
+  );
+  // 全新玩家（没有版本记录、也没有任何旧存档）：启动就记下当前版本，
+  // 免得这一局在初始化时写入的 jun2048 让自己下次被误认成「从 2.2.2 升级上来的老玩家」
+  if (seenVersion === null && !hasLegacyData(kv, config.storageKey)) {
+    writeSeenVersion(kv, config.storageKey, GAME_VERSION);
+  }
   let intro: IntroView | null = null;
 
   const btnNew = need<HTMLButtonElement>(root, '#btn-new');
@@ -357,18 +382,39 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     hud.announce('新的一局开始了');
   }
 
-  /** 从开场界面进入棋局（开始 / 继续） */
-  function enterGame(): void {
+  /** 版本更新弹层：只显示版本号变动；关掉后接着进入游戏 */
+  function showUpdateNotice(change: VersionChange, done: () => void): void {
+    overlay.show({
+      kind: 'update',
+      eyebrow: '版本更新',
+      title: '版本已更新',
+      text: versionChangeText(change),
+      actions: [{ label: '开始玩', primary: true }],
+      onClose: done,
+    });
+  }
+
+  /** 从开场界面进入棋局（开始 / 继续）；afterEnter 用于「玩法说明」在弹层关掉后接图鉴 */
+  function enterGame(afterEnter?: () => void): void {
     // 用户手势：解锁音频并开始（未来的）背景音乐
     audio.unlock();
     audio.startMusic();
-    if (pendingGameOver) {
-      pendingGameOver = false;
-      openGameOver(true);
-      return;
-    }
-    audio.play('start');
-    hud.announce(state.moves > 0 ? '继续上一局' : '开局！滑动或按方向键合成');
+    // 进入游戏（哪怕这次没弹更新）就记下当前版本，同一版本不再重复提示
+    writeSeenVersion(kv, config.storageKey, GAME_VERSION);
+    const update = pendingUpdate;
+    pendingUpdate = null;
+    const finish = (): void => {
+      if (pendingGameOver) {
+        pendingGameOver = false;
+        openGameOver(true);
+        return;
+      }
+      audio.play('start');
+      hud.announce(state.moves > 0 ? '继续上一局' : '开局！滑动或按方向键合成');
+      afterEnter?.();
+    };
+    if (update) showUpdateNotice(update, finish);
+    else finish();
   }
 
   /* ---------------- 收集 ---------------- */
@@ -585,9 +631,8 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     codexEl: need<HTMLElement>(root, '#intro-codex'),
     onStart: enterGame,
     onGuide: () => {
-      // 「玩法说明」也视为进入游戏：解锁音频、处理读档死局，再把合成链抽屉叠在上面
-      enterGame();
-      sheet.open('chain');
+      // 「玩法说明」也视为进入游戏：解锁音频、处理版本更新 / 读档死局，再把合成链抽屉叠在上面
+      enterGame(() => sheet.open('chain'));
     },
   });
   intro.setStats({
@@ -598,8 +643,9 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   if (restored?.over) {
     pendingGameOver = true;
     later(w, () => {
-      // 开场界面还开着就先不弹，等玩家进入游戏时再弹
-      if (!pendingGameOver || intro?.isOpen()) return;
+      // 开场界面还开着就先不弹，等玩家进入游戏时再弹；
+      // 版本更新弹层正开着也交给 enterGame 的关闭回调去接续，别抢在它上面
+      if (!pendingGameOver || intro?.isOpen() || overlay.isOpen()) return;
       pendingGameOver = false;
       openGameOver(true);
     }, 260);

@@ -17,7 +17,7 @@
  *   hue    方块/卡片渐变的主色相（0-360）；不写则按池子顺序自动分配
  *   hue2   渐变的第二色相；不写则主色相 +34，保证同一色系的两条词条也能区分
  *
- * 特殊合成产物（隋军 / 隋军·环 / 记赢赢 / 李娜）不在抽取池里，见 recipes.ts。
+ * 特殊合成产物（水军 / 水军·环 / 水缸 / 记赢赢 / 李娜）不在抽取池里，见 recipes.ts。
  */
 
 export type RarityId = 'common' | 'rare' | 'legend';
@@ -83,6 +83,12 @@ export const CODEX_ENTRIES: readonly CodexEntry[] = [
   { id: 'biao', name: '彪', rarity: 'rare', weight: 2, hue: 24, hue2: 350 }, // 彪悍橙红
   { id: 'huicheng', name: '会成', rarity: 'rare', weight: 2, hue: 132, hue2: 104 }, // 会成绿
   { id: 'xiaoyu', name: '🌧️', rarity: 'rare', weight: 2, hue: 252, hue2: 224 }, // 小雨蓝紫
+
+  // v2.3 新增 4 条（用户提供文案）：钢 是「隋 + 钢 → 水缸」的配方材料，带 +隋 提示
+  { id: 'gang', name: '钢', rarity: 'rare', weight: 2, recipe: '+隋', hue: 205, hue2: 235 }, // 钢蓝
+  { id: 'weihai', name: '威海', rarity: 'rare', weight: 2, hue: 188, hue2: 164 }, // 海风青
+  { id: 'dingjian', name: '钉剑', rarity: 'rare', weight: 2, hue: 30, hue2: 52 }, // 锈铁橙
+  { id: 'junzhu', name: '君竹', rarity: 'rare', weight: 2, hue: 106, hue2: 82 }, // 竹青
 ];
 
 /** 纯文本场景（无障碍、配方列表）用的名字：圈隋写作「隋·环」 */
