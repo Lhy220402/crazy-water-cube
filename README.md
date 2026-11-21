@@ -4,6 +4,12 @@
 每次打开先看到「疯狂水立方」开场界面，点开始（或按 Enter / Space）进入棋局。
 合出 OLD FIVE 只是**假通关**——真正的通关门道，藏在词条之间，留给你自己发现。
 
+## 下载（v2.1.0）
+
+- **单文件版**：下载 `疯狂水立方.html`（约 82.6 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
+- **发行版**：[GitHub Releases](https://github.com/Lhy220402/crazy-water-cube/releases) · [Gitee 发行版](https://gitee.com/leng-haoyuan/jun2048/releases)（含单文件版、源码包、玩法说明、SHA256 校验和）。
+- **源码**：发行版里的 `疯狂水立方-source.tar.gz`，或 `git clone` 本仓库；`npm install && npm run build` 重新打包。
+
 ## 怎么玩
 
 - 开场界面：最高分 + 已收录词条数；有存档时按钮变成「继续游戏」。点「玩法说明」直接看图鉴里的合成链。
