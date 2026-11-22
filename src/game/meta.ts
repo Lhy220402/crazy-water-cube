@@ -13,7 +13,7 @@
  */
 
 export const GAME_NAME = '疯狂水立方';
-export const GAME_VERSION = '2.4.0';
+export const GAME_VERSION = '2.4.1';
 
 /**
  * 启用「版本更新弹窗」记录（`jun2048.version`）之前的最后一个已发布版本。

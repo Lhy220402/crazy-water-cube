@@ -124,7 +124,7 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     storageKey: config.storageKey,
     button: need<HTMLButtonElement>(root, '#btn-theme'),
   });
-  // 音频：合成猫叫音效 + 声音开关（偏好存 jun2048.sound）
+  // 音频：合成猫叫 + 失败音效（本局结束 / 读档死局）+ 声音开关（偏好存 jun2048.sound）
   const audio = createAudio({ w, kv, storageKey: config.storageKey });
 
   /* ---------------- 状态 ---------------- */
@@ -139,6 +139,8 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   let destroyed = false;
   /** 开场界面期间发现读档是死局：等玩家点「继续游戏」后再弹结束层 */
   let pendingGameOver = false;
+  /** 本次死局是否已经播过失败音效（同一死局不重复播；重开 / 撤销后复位） */
+  let overAnnounced = false;
   /**
    * 进入游戏时要弹的版本更新（启动时只读推导，不写存档）：
    * 老玩家升级 / 换版本后第一次进入游戏弹一次，只显示版本号变动。
@@ -254,7 +256,21 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     return overlay.isOpen() || sheet.isOpen();
   }
 
-  function openFakeWin(): void {
+  /**
+   * 结束层的弹层优先级最低，但失败判定不能因此被吞掉：
+   * 解释卡 / 通关层关闭后再补弹结束层；如果它同时开了图鉴，结束层会盖在抽屉上面，
+   * 关掉结束层还能继续看图鉴。
+   */
+  function scheduleGameOverAfterClose(): void {
+    later(w, () => {
+      if (destroyed || !state.over) return;
+      if (overlay.isOpen() || intro?.isOpen()) return;
+      // 这里不是「读档死局」，本局刚走完最后一步，历史里通常还能撤销
+      openGameOver();
+    }, 0);
+  }
+
+  function openFakeWin(deferOver = false): void {
     const tail =
       config.codex === undefined
         ? '还想再冲就继续玩。'
@@ -276,10 +292,11 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
         { label: '再来一局', action: () => startNew() },
       ],
       burst: true,
+      onClose: deferOver ? scheduleGameOverAfterClose : undefined,
     });
   }
 
-  function openTrueWin(): void {
+  function openTrueWin(deferOver = false): void {
     overlay.show({
       kind: 'truewin',
       eyebrow: '真通关 · 记赢赢',
@@ -295,11 +312,12 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
         { label: '再来一局', action: () => startNew() },
       ],
       burst: true,
+      onClose: deferOver ? scheduleGameOverAfterClose : undefined,
     });
   }
 
   /** 首次收录词条 / 首次触发特殊合成：弹解释卡（文案在 game/lore.ts） */
-  function openLore(entry: CodexEntry): void {
+  function openLore(entry: CodexEntry, deferOver = false): void {
     const special = specialProduct(entry.id);
     const stats = [
       { label: '已收录', value: String(sheet.collectedCount()) },
@@ -323,11 +341,16 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
         { label: '查看图鉴', action: () => sheet.open('codex') },
       ],
       burst: true,
+      onClose: deferOver ? scheduleGameOverAfterClose : undefined,
     });
   }
 
   function openGameOver(fromRestore = false): void {
-    audio.play('over');
+    // 失败音效每个死局只播一次：被解释卡 / 通关层挡住后补弹结束层时不再重复
+    if (!overAnnounced) {
+      overAnnounced = true;
+      audio.play('over');
+    }
     const actions: OverlayAction[] = [{ label: '再来一局', primary: true, action: () => startNew() }];
     if (!fromRestore && history.length > 0) actions.unshift({ label: '撤销一步', action: () => undo() });
     overlay.show({
@@ -376,6 +399,7 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     pending = null;
     queued = null;
     state = createGame(config, rng);
+    overAnnounced = false;
     history.length = 0;
     paintAll();
     save();
@@ -469,6 +493,11 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   function doMove(dir: Direction): void {
     if (destroyed) return;
     if (dialogOpen()) return;
+    // 已经无路可走：结束层被遮罩 / Esc 关掉后再操作时重新提示（失败音效不重复）
+    if (state.over) {
+      openGameOver();
+      return;
+    }
     // 「妙」增益期间：记录本步开始前棋盘上的妙，移动后爱心跟着妙的新位置生成
     const heartIds = state.buffs.some((buff) => buff.id === 'miao')
       ? state.cells
@@ -586,10 +615,13 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
 
     // 弹层优先级：真通关 > 假通关 > 首次收录解释 > 结束
     // 「隋」「李娜」没有解释文案（v2.4 用户要求去掉）：首次收录不弹解释卡，只播报收录结果
-    if (result.justTrueWon) openTrueWin();
-    else if (result.justWon) openFakeWin();
-    else if (firstNew && loreOf(firstNew.id).length > 0) openLore(firstNew);
-    else if (state.over) openGameOver();
+    // 结束层优先级最低，但必须补弹：本步同时触发解释卡 / 通关层时，先记下 over，
+    // 等这些弹层关闭后再由 onClose 补上「无处可合」，否则失败判定会被吞掉。
+    const overNow = state.over;
+    if (result.justTrueWon) openTrueWin(overNow);
+    else if (result.justWon) openFakeWin(overNow);
+    else if (firstNew && loreOf(firstNew.id).length > 0) openLore(firstNew, overNow);
+    else if (overNow) openGameOver();
   }
 
   function undo(): void {
@@ -607,6 +639,7 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
       sheet.close();
       queued = null;
       state = previous;
+      overAnnounced = false;
       paintAll();
       save();
       audio.play('undo');

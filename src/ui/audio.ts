@@ -1,23 +1,25 @@
 /**
- * 音频引擎：每次合成后播放一段内联音效（v2.2 实现）
+ * 音频引擎：合成后播放内联猫叫，本局结束时播放内联失败音效（v2.4.1）
  *
  * 设计：
- *   - 音源内联在 merge-sfx.ts（data URI），单文件契约不引外部资源、不写存档。
+ *   - 音源内联在 merge-sfx.ts / over-sfx.ts（data URI），单文件契约不引外部资源、不写存档。
  *   - 浏览器自动播放策略要求先有用户手势：app.ts 在点「开始合成 / 继续游戏」时
- *     调用 unlock()，这里才创建 AudioContext 并解码音效。
- *   - 只对「合成」发声：merge / special / win / truewin；普通移动 / 无效移动 / 撤销
- *     保持安静，避免每步都响。用 playbackRate 让特殊合成与通关的音高更高一点。
+ *     调用 unlock()，这里才创建 AudioContext 并解码两段音效。
+ *   - 合成类 cue 用 merge 音源：merge / special / win / truewin 用不同 playbackRate；
+ *     失败音效只在 over（无路可走 / 读档死局）用一个独立音源，保持「失败」听感。
+ *     普通移动 / 无效移动 / 撤销保持安静，避免每步都响。
  *   - 没有 AudioContext（旧浏览器、jsdom、测试）时全部安全降级为 no-op。
  *   - 声音开关持久化在 `${storageKey}.sound`（'on' / 'off'，缺省 = 开），
  *     这是第 5 个 localStorage key；不存音量。
  *
  * 以后要做背景音乐：在 unlock() 里加载 loop 资源，startMusic/stopMusic 控制即可；
- * 若要持久化音乐开关，先更新 docs/交接文档.md 的存档契约再加第 5 个 key。
+ * 若要持久化音乐开关，先更新 docs/交接文档.md 的存档契约再加 key。
  */
 import type { KV } from './storage.ts';
 import { MERGE_SFX_DATA_URI } from './merge-sfx.ts';
+import { OVER_SFX_DATA_URI } from './over-sfx.ts';
 
-/** 每一个游戏动作对应的声音事件；只有合成类 cue 会实际发声 */
+/** 每一个游戏动作对应的声音事件；只有合成类 + 失败会实际发声 */
 export type AudioCue =
   | 'start' // 从开场界面进入游戏
   | 'move' // 有效移动（无合成）
@@ -29,7 +31,7 @@ export type AudioCue =
   | 'restart' // 重新开局
   | 'win' // 假通关
   | 'truewin' // 真通关
-  | 'over'; // 无路可走
+  | 'over'; // 无路可走（本局失败）
 
 export type AudioDirection = 'up' | 'down' | 'left' | 'right';
 
@@ -83,6 +85,27 @@ function audioCtorOf(w: Window | null): AudioContextCtor | null {
   return win.AudioContext ?? win.webkitAudioContext ?? null;
 }
 
+/** 把一段内联 data URI 解码成 AudioBuffer；没有 AudioContext / 解码失败时静默 */
+function decodeDataUri(
+  ctx: AudioContext,
+  win: Window,
+  dataUri: string,
+  done: (buffer: AudioBuffer) => void,
+  fail: () => void,
+): void {
+  try {
+    const comma = dataUri.indexOf(',');
+    const base64 = comma >= 0 ? dataUri.slice(comma + 1) : '';
+    const binary = win.atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    // 用回调式 decodeAudioData：Safari 14.1 也支持，promise 式在旧 Safari 上不保证
+    ctx.decodeAudioData(bytes.buffer, done, fail);
+  } catch {
+    fail();
+  }
+}
+
 export function createAudio(options: AudioOptions): AudioEngine {
   const w = options.w;
   const kv = options.kv ?? null;
@@ -101,33 +124,42 @@ export function createAudio(options: AudioOptions): AudioEngine {
   let destroyed = false;
   let ctx: AudioContext | null = null;
   let master: GainNode | null = null;
-  let sfx: AudioBuffer | null = null;
-  let decoding = false;
+  let mergeSfx: AudioBuffer | null = null;
+  let overSfx: AudioBuffer | null = null;
+  let decodingMerge = false;
+  let decodingOver = false;
 
   function decodeSfx(): void {
-    if (!ctx || sfx || decoding) return;
-    const win = w;
-    if (!win) return;
-    decoding = true;
-    try {
-      const comma = MERGE_SFX_DATA_URI.indexOf(',');
-      const base64 = comma >= 0 ? MERGE_SFX_DATA_URI.slice(comma + 1) : '';
-      const binary = win.atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-      // 用回调式 decodeAudioData：Safari 14.1 也支持，promise 式在旧 Safari 上不保证
-      ctx.decodeAudioData(
-        bytes.buffer,
+    if (!ctx || !w) return;
+    if (!mergeSfx && !decodingMerge) {
+      decodingMerge = true;
+      decodeDataUri(
+        ctx,
+        w,
+        MERGE_SFX_DATA_URI,
         (decoded) => {
-          sfx = decoded;
-          decoding = false;
+          mergeSfx = decoded;
+          decodingMerge = false;
         },
         () => {
-          decoding = false;
+          decodingMerge = false;
         },
       );
-    } catch {
-      decoding = false;
+    }
+    if (!overSfx && !decodingOver) {
+      decodingOver = true;
+      decodeDataUri(
+        ctx,
+        w,
+        OVER_SFX_DATA_URI,
+        (decoded) => {
+          overSfx = decoded;
+          decodingOver = false;
+        },
+        () => {
+          decodingOver = false;
+        },
+      );
     }
   }
 
@@ -149,12 +181,12 @@ export function createAudio(options: AudioOptions): AudioEngine {
     return ctx;
   }
 
-  function playSfx(rate: number, gain: number): void {
+  function playBuffer(buffer: AudioBuffer | null, rate: number, gain: number): void {
     const context = ensureContext();
-    if (!context || !master || !sfx) return;
+    if (!context || !master || !buffer) return;
     try {
       const source = context.createBufferSource();
-      source.buffer = sfx;
+      source.buffer = buffer;
       source.playbackRate.value = rate;
       const envelope = context.createGain();
       envelope.gain.value = Math.max(0, Math.min(1, gain));
@@ -179,19 +211,23 @@ export function createAudio(options: AudioOptions): AudioEngine {
     switch (cue) {
       // 普通合成：原声
       case 'merge':
-        playSfx(1, 0.85);
+        playBuffer(mergeSfx, 1, 0.85);
         break;
       // 特殊合成：升半音多一点，听得出「这次不一样」
       case 'special':
-        playSfx(1.12, 1);
+        playBuffer(mergeSfx, 1.12, 1);
         break;
       case 'win':
-        playSfx(1.22, 1);
+        playBuffer(mergeSfx, 1.22, 1);
         break;
       case 'truewin':
-        playSfx(1.32, 1);
+        playBuffer(mergeSfx, 1.32, 1);
         break;
-      // move / invalid / undo / restart / collect / start / over 不发声
+      // 本局失败：独立的失败音源，不升调
+      case 'over':
+        playBuffer(overSfx, 1, 0.9);
+        break;
+      // move / invalid / undo / restart / collect / start 不发声
       default:
         break;
     }
@@ -242,7 +278,8 @@ export function createAudio(options: AudioOptions): AudioEngine {
       destroyed = true;
       music = false;
       unlocked = false;
-      sfx = null;
+      mergeSfx = null;
+      overSfx = null;
       master = null;
       if (ctx) {
         try {

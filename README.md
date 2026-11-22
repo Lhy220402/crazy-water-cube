@@ -4,9 +4,9 @@
 每次打开先看到「疯狂水立方」开场界面，点开始（或按 Enter / Space）进入棋局。
 合出 OLD FIVE 只是**假通关**——真正的通关门道，藏在词条之间，留给你自己发现。
 
-## 下载（v2.4.0）
+## 下载（v2.4.1）
 
-- **单文件版**：下载 `疯狂水立方.html`（约 112 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
+- **单文件版**：下载 `疯狂水立方.html`（约 136 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
 - **在线版（GitHub Pages）**：[https://lhy220402.github.io/crazy-water-cube/](https://lhy220402.github.io/crazy-water-cube/)，内容与单文件版相同。
 - **发行版**：[GitHub Releases](https://github.com/Lhy220402/crazy-water-cube/releases) · [Gitee 发行版](https://gitee.com/leng-haoyuan/jun2048/releases)（含单文件版、源码包、玩法说明、SHA256 校验和）。
 - **源码**：发行版里的 `疯狂水立方-source.tar.gz`，或 `git clone` 本仓库；`npm install && npm run build` 重新打包。
@@ -15,7 +15,7 @@
 
 - 开场界面：最高分 + 已收录词条数；有存档时按钮变成「继续游戏」。点「玩法说明」直接看图鉴里的合成链。
 - 手指在棋盘上滑（上/下/左/右），或按键盘方向键 / WASD。
-- 两枚同级相碰就合成下一级，合成加分；每次合成会播放一声猫叫音效。
+- 两枚同级相碰就合成下一级，合成加分；每次合成会播放一声猫叫音效，无路可走时播放一段失败音效。
 - 固定合成链：
 
 | 材料 | 产物 | 得分 |
@@ -67,8 +67,8 @@
   全部收齐后，进度条满格、标题显示总数，下方出现「未完待续」。收录跨局累积，重新开局不清空，撤销不回退。
 - 撤销最多 20 步；最高分 / 棋局 / 图鉴自动存在浏览器本地，关掉再打开接着玩。
 - **版本更新提示**：更新到新版本后第一次进入游戏会弹一次「版本已更新」，只显示版本号变化
-  （如 `v2.3.0 → v2.4.0`）；新玩家不弹，同一版本不会重复弹。记录存在 `jun2048.version`。
-- 底栏「🔊 / 🔇」按钮开关合成音效，偏好会被记住（`jun2048.sound`）；「◐」按钮切换外观
+  （如 `v2.4.0 → v2.4.1`）；新玩家不弹，同一版本不会重复弹。记录存在 `jun2048.version`。
+- 底栏「🔊 / 🔇」按钮开关合成音效与失败音效，偏好会被记住（`jun2048.sound`）；「◐」按钮切换外观
   （跟随系统 → 浅色 → 深色，记住偏好）。
 - **关于**：入口收在图鉴抽屉底部（低频功能，避免误触），内容是玩法简介 + Gitee / GitHub 两个仓库链接；
   「在线玩」按钮已去掉（发给同学的本来就是 GitHub Pages 在线版）。
@@ -98,8 +98,9 @@ src/
   ui/
     app.ts      编排：状态/历史/移动管线/收集/爱心粒子触发/弹层优先级/存档
     intro.ts    开场界面（标题、最高分/图鉴统计、开始/玩法说明）
-    audio.ts    音频引擎（WebAudio，合成后播放内联猫叫音效）
+    audio.ts    音频引擎（WebAudio，合成后播放内联猫叫、本局失败播放失败音效）
     merge-sfx.ts 合成音效 data URI（scripts/audio.mjs 生成，勿手改）
+    over-sfx.ts 失败音效 data URI（scripts/audio.mjs 生成，勿手改）
     board.ts    棋盘渲染与动画编排（含稀有度光效、爱心粒子）
     hud.ts      得分/增益徽章/撤销状态/无障碍播报
     overlay.ts  居中弹层（假通关/真通关/结束/确认/解释/关于/版本更新）
@@ -114,7 +115,7 @@ src/
   main.ts       入口
 index.html      页面骨架（含开场界面与内联占位）
 scripts/        build / dev / verify-dist / pack / audio / pages
-tests/          engine.test.ts（36）+ audio.test.ts（3）+ version.test.ts（3）+ ui.test.ts（42）
+tests/          engine.test.ts（36）+ audio.test.ts（3）+ version.test.ts（3）+ ui.test.ts（45）
 docs/           交接文档 / 新对话提示词 / 设计文档
 ```
 
@@ -124,20 +125,25 @@ docs/           交接文档 / 新对话提示词 / 设计文档
 npm install
 npm run build     # → dist/2048.html
 npm run dev       # 本地预览，手机同网络可访问
-npm run verify    # 类型检查 + 85 测试 + 单文件自检
+npm run verify    # 类型检查 + 87 测试 + 单文件自检
 npm run pack      # 发布到 /sdcard/Download/DSH-Go/
 npm run pages     # 单文件版发布到 GitHub Pages（gh-pages 分支）
 ```
 
-## 音频（v2.2.2 原版）
+## 音频（合成音效 v2.2.2 · 失败音效 v2.4.1）
 
-- 音源：用户提供的微信语音里的**第二声猫叫**（1.15s–2.05s），已降噪（ffmpeg `afftdn` + 高通）、
-  响度归一化，转成单声道 mp3，再 base64 内联进 `src/ui/merge-sfx.ts`。
-- 播放：点「开始合成 / 继续游戏」时 `unlock()` 创建 AudioContext 并解码；只在**合成**后播放
-  （merge / special / win / truewin 用不同音高），普通移动、无效移动、撤销保持安静。
+- 合成音效：用户提供的微信语音里的**第二声猫叫**（1.15s–2.05s），已降噪（ffmpeg `afftdn` + 高通）、
+  响度归一化，转成单声道 mp3，再 base64 内联进 `src/ui/merge-sfx.ts`。v2.4.1 没有改动这段音源。
+- 失败音效（v2.4.1）：用户提供的「标准录音 1.mp3」——先解码成无损 wav（绕开源文件损坏的首帧），
+  去掉开头约 0.56s 静音/底噪，做 70Hz 高通 + 14kHz 低通、`afftdn` 降噪、`loudnorm` 响度归一化、
+  首尾淡入淡出，再转成 44.1kHz 单声道 64kbps mp3 内联进 `src/ui/over-sfx.ts`。
+- 播放：点「开始合成 / 继续游戏」时 `unlock()` 创建 AudioContext 并解码；合成后播放
+  （merge / special / win / truewin 用不同音高），无路可走（over）播放独立的失败音效；
+  普通移动、无效移动、撤销保持安静。失败音效每个死局只播一次，重开 / 撤销后复位。
 - 单文件契约：音频是 data URI，不引外部资源；声音开关存 `jun2048.sound`（第 5 个 localStorage key，`on`/`off`，缺省开）。
 - 底栏「🔊 / 🔇」按钮切换 `audio.setEnabled()`，按钮状态与存档同步；音量本身不持久化。
-- 重新处理：`node scripts/audio.mjs <源音频> [起始秒] [结束秒]`（默认 1.15–2.05）。
+- 重新处理：合成音效 `node scripts/audio.mjs <源音频> [起始秒] [结束秒]`（默认 1.15–2.05）；
+  失败音效 `node scripts/audio.mjs over <源音频> [起始秒] [结束秒]`（默认 0.56–2.80）。
 - 以后要加背景音乐：在 `audio.ts` 的 `unlock()` 里加载 loop；音乐开关若要持久化，
   先同步更新交接文档的存档契约再加 key。
 - v2.3 曾尝试把猫叫剪成三段并做升降调，用户试听不满意，已完整回滚到上面这套 v2.2.2 实现；

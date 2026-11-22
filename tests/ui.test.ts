@@ -623,6 +623,47 @@ test('无路可走时弹出结束层，可重新开局', async () => {
   h.close();
 });
 
+test('最后一步同时首次收录时，解释卡关闭后仍会补弹结束层', async () => {
+  // 满盘、只有左上角两枚词条相邻：右移合成并抽到「燕子」，新生成的军填满棋盘后无路可走。
+  // 修复前这里会弹解释卡、然后永远不弹结束层（失败判定被吞掉）。
+  const board = saved([5, 5, 2, 3, 1, 2, 3, 4, 2, 3, 4, 0, 3, 4, 0, 1], {
+    variants: ['sui', 'hongmei', null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    won: true,
+    moves: 42,
+  });
+  // rng：抽到燕子（0.5）、空格只有一个不消耗位置、生成军（0）
+  const sequence = [0.5, 0, 0];
+  let index = 0;
+  const rng = (): number => sequence[Math.min(index++, sequence.length - 1)]!;
+  const h = await boot(board, {}, undefined, { rng });
+  h.app.move('right');
+  await settle(h);
+  assert.equal(h.app.state.over, true, '这一步之后应该已经无路可走');
+  assert.equal(h.$('#overlay').hidden, false);
+  assert.match(h.$('#overlay-eyebrow').textContent ?? '', /图鉴收录/, '先弹首次收录解释卡');
+  h.$('#overlay-actions .pill--primary').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(OVERLAY + 120);
+  assert.equal(h.$('#overlay').hidden, false, '解释卡关掉后结束层必须补上');
+  assert.match(h.$('#overlay-title').textContent ?? '', /无处可合/);
+  assert.ok(h.$('#overlay-actions').textContent?.includes('撤销一步'), '本局刚结束，应能撤销一步');
+  h.close();
+});
+
+test('结束层被遮罩关掉后，再操作会重新提示结束', async () => {
+  const dead = [0, 1, 2, 3, 1, 2, 3, 4, 2, 3, 4, 0, 3, 4, 0, 1];
+  const h = await boot(saved(dead, { score: 88, moves: 42 }));
+  await sleep(OVERLAY + 120);
+  assert.equal(h.$('#overlay').hidden, false);
+  h.$('#overlay-scrim').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(OVERLAY + 80);
+  assert.equal(h.$('#overlay').hidden, true, '遮罩可以关掉结束层');
+  h.app.move('left');
+  await sleep(60);
+  assert.equal(h.$('#overlay').hidden, false, '死局再操作时应重新提示结束');
+  assert.match(h.$('#overlay-title').textContent ?? '', /无处可合/);
+  h.close();
+});
+
 test('新游戏需要二次确认，取消不会清空', async () => {
   const h = await boot();
   h.app.move('left');

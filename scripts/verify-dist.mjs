@@ -86,9 +86,11 @@ check(html.includes('prefers-color-scheme'), '缺少明暗外观适配');
 check(/data-theme=["']?dark/.test(html), '缺少手动深色模式覆盖');
 check(html.length > 20_000, '文件过小，疑似构建不完整');
 check(/__jun2048/.test(html), '缺少 App 入口');
-// 合成音效必须内联（data URI + WebAudio 解码），不能引外部音频
+// 音效必须内联（data URI + WebAudio 解码），不能引外部音频
 // v2.3 曾尝试三段猫叫剪辑，用户听完不满意，已完整回滚到 v2.2.2 的单声猫叫
-check(/data:audio\/mpeg;base64,[A-Za-z0-9+/=]{5000,}/.test(html), '缺少内联的合成音效');
+// v2.4.1：新增本局失败音效，合成音效 + 失败音效两段 data URI
+const inlineAudio = html.match(/data:audio\/mpeg;base64,[A-Za-z0-9+/=]{5000,}/g) ?? [];
+check(inlineAudio.length >= 2, '缺少内联的合成音效 / 失败音效（应有两段 data URI）');
 check(html.includes('decodeAudioData'), '音频应通过 WebAudio 解码内联音效');
 
 const kb = Buffer.byteLength(html, 'utf8') / 1024;

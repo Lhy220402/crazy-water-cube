@@ -6,7 +6,7 @@ import type { KV } from '../src/ui/storage.ts';
 /**
  * 音频引擎单元测试：
  *  - jsdom / 旧浏览器没有 AudioContext 时必须安全降级（游戏不能因此报错）
- *  - 有 AudioContext 时，只有合成类 cue 会真正启动音源，且受 enabled / unlock 控制
+ *  - 有 AudioContext 时，合成类 cue 与失败 cue 播放各自音源，且受 enabled / unlock 控制
  * 用结构相同的假 AudioContext 跑真实播放路径，不依赖浏览器。
  */
 test('音频引擎：没有 AudioContext 时全部安全降级', () => {
@@ -31,9 +31,11 @@ test('音频引擎：没有 AudioContext 时全部安全降级', () => {
   assert.equal(audio.musicPlaying, false);
 });
 
-test('音频引擎：有 AudioContext 时只在合成 cue 播放，enabled=false 静音', () => {
+test('音频引擎：合成 cue 与失败 cue 各播各的音源，enabled=false 静音', () => {
   let created = 0;
   let started = 0;
+  let decoded = 0;
+  const startedDurations: number[] = [];
   const gain = () => ({ gain: { value: 0 }, connect() {} });
   const source = () => ({
     buffer: null as unknown,
@@ -41,6 +43,7 @@ test('音频引擎：有 AudioContext 时只在合成 cue 播放，enabled=false
     connect() {},
     start() {
       started += 1;
+      startedDurations.push((this.buffer as { duration?: number } | null)?.duration ?? -1);
     },
     stop() {},
   });
@@ -57,8 +60,9 @@ test('音频引擎：有 AudioContext 时只在合成 cue 播放，enabled=false
       return source();
     }
     decodeAudioData(_buffer: ArrayBuffer, ok: (buffer: unknown) => void, _bad?: (error: unknown) => void) {
-      // 同步回调，模拟解码完成；测试只关心播放路径
-      ok({ duration: 1 });
+      // 同步回调，模拟解码完成；用递增 duration 区分合成 / 失败两段音源
+      decoded += 1;
+      ok({ duration: decoded });
     }
     resume() {
       return Promise.resolve();
@@ -80,6 +84,7 @@ test('音频引擎：有 AudioContext 时只在合成 cue 播放，enabled=false
 
   audio.unlock();
   assert.equal(created, 1, 'unlock 后才创建 AudioContext');
+  assert.equal(decoded, 2, 'unlock 时应同时解码合成音效与失败音效');
 
   audio.play('move');
   audio.play('invalid');
@@ -94,13 +99,18 @@ test('音频引擎：有 AudioContext 时只在合成 cue 播放，enabled=false
   assert.equal(started, 3);
   audio.play('truewin');
   assert.equal(started, 4);
+  audio.play('over');
+  assert.equal(started, 5, '本局结束播放一次失败音效');
+  assert.equal(startedDurations.at(-1), 2, '失败 cue 应使用独立的失败音源');
 
   audio.setEnabled(false);
   audio.play('merge');
-  assert.equal(started, 4, '关闭音效后不再启动音源');
+  audio.play('over');
+  assert.equal(started, 5, '关闭音效后不再启动音源');
   audio.setEnabled(true);
   audio.play({ cue: 'merge', merges: 1, gained: 8 });
-  assert.equal(started, 5);
+  assert.equal(started, 6);
+  assert.equal(startedDurations.at(-1), 1, '合成 cue 仍使用合成音源');
 
   audio.destroy();
 });
