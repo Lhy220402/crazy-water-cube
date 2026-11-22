@@ -52,12 +52,23 @@
   --mystery-edge: rgba(90, 140, 175, 0.42);
   --mystery-bg: rgba(255, 255, 255, 0.16);
   --mystery-face: rgba(90, 140, 175, 0.14);
-  --best-bg: linear-gradient(165deg, rgba(255, 255, 255, 0.78), rgba(214, 240, 255, 0.5));
+  --best-bg: linear-gradient(165deg, rgba(255, 255, 255, 0.84), rgba(255, 238, 200, 0.55));
   --scene-glow: radial-gradient(120% 90% at 50% -10%, rgba(255, 255, 255, 0.55), transparent 60%);
   --bubble-edge: rgba(255, 255, 255, 0.75);
   --bubble-bg: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.85), rgba(160, 215, 250, 0.25) 55%, rgba(120, 190, 240, 0.12));
   --wave-bg: rgba(120, 195, 240, 0.16);
   --card-bg: var(--glass-bg-strong);
+  /* v2.4：视觉重做新增 token（稀有/传说光效、爱心粒子、进度条、关于入口） */
+  --accent-2: #33c2d8;
+  --gold: #c9a96b;
+  --rare-aura: rgba(255, 255, 255, 0.58);
+  --legend-aura: rgba(255, 240, 212, 0.62);
+  --heart-ink: #ff5f9e;
+  --heart-glow: rgba(255, 110, 170, 0.8);
+  --bar-track: rgba(90, 140, 175, 0.18);
+  --bar-fill: linear-gradient(90deg, #35b6ff, #33c2d8 46%, #c9a96b);
+  --about-link-bg: rgba(255, 255, 255, 0.42);
+  --caustic: rgba(255, 255, 255, 0.16);
   --intro-veil: radial-gradient(
     120% 90% at 50% 0%,
     rgba(255, 255, 255, 0.74),
@@ -104,12 +115,22 @@
     --mystery-edge: rgba(255, 255, 255, 0.16);
     --mystery-bg: rgba(255, 255, 255, 0.03);
     --mystery-face: rgba(255, 255, 255, 0.06);
-    --best-bg: linear-gradient(165deg, rgba(38, 64, 84, 0.6), rgba(20, 36, 48, 0.5));
+    --best-bg: linear-gradient(165deg, rgba(64, 54, 34, 0.55), rgba(30, 26, 18, 0.5));
     --scene-glow: radial-gradient(120% 90% at 50% -10%, rgba(40, 110, 160, 0.35), transparent 62%);
     --bubble-edge: rgba(160, 215, 255, 0.35);
     --bubble-bg: radial-gradient(circle at 32% 30%, rgba(200, 235, 255, 0.35), rgba(90, 160, 220, 0.12) 55%, rgba(60, 130, 200, 0.06));
     --wave-bg: rgba(60, 140, 200, 0.12);
     --card-bg: rgba(255, 255, 255, 0.06);
+    --accent-2: #5ce0e8;
+    --gold: #e6d2a6;
+    --rare-aura: rgba(214, 233, 247, 0.42);
+    --legend-aura: rgba(245, 226, 190, 0.5);
+    --heart-ink: #ff8db8;
+    --heart-glow: rgba(255, 110, 170, 0.55);
+    --bar-track: rgba(255, 255, 255, 0.08);
+    --bar-fill: linear-gradient(90deg, #4fb8ff, #5ce0e8 46%, #e6d2a6);
+    --about-link-bg: rgba(255, 255, 255, 0.06);
+    --caustic: rgba(120, 200, 255, 0.1);
     --intro-veil: radial-gradient(
       120% 90% at 50% 0%,
       rgba(22, 52, 76, 0.74),
@@ -155,12 +176,22 @@
   --mystery-edge: rgba(255, 255, 255, 0.16);
   --mystery-bg: rgba(255, 255, 255, 0.03);
   --mystery-face: rgba(255, 255, 255, 0.06);
-  --best-bg: linear-gradient(165deg, rgba(38, 64, 84, 0.6), rgba(20, 36, 48, 0.5));
+  --best-bg: linear-gradient(165deg, rgba(64, 54, 34, 0.55), rgba(30, 26, 18, 0.5));
   --scene-glow: radial-gradient(120% 90% at 50% -10%, rgba(40, 110, 160, 0.35), transparent 62%);
   --bubble-edge: rgba(160, 215, 255, 0.35);
   --bubble-bg: radial-gradient(circle at 32% 30%, rgba(200, 235, 255, 0.35), rgba(90, 160, 220, 0.12) 55%, rgba(60, 130, 200, 0.06));
   --wave-bg: rgba(60, 140, 200, 0.12);
   --card-bg: rgba(255, 255, 255, 0.06);
+  --accent-2: #5ce0e8;
+  --gold: #e6d2a6;
+  --rare-aura: rgba(214, 233, 247, 0.42);
+  --legend-aura: rgba(245, 226, 190, 0.5);
+  --heart-ink: #ff8db8;
+  --heart-glow: rgba(255, 110, 170, 0.55);
+  --bar-track: rgba(255, 255, 255, 0.08);
+  --bar-fill: linear-gradient(90deg, #4fb8ff, #5ce0e8 46%, #e6d2a6);
+  --about-link-bg: rgba(255, 255, 255, 0.06);
+  --caustic: rgba(120, 200, 255, 0.1);
   --intro-veil: radial-gradient(
     120% 90% at 50% 0%,
     rgba(22, 52, 76, 0.74),
@@ -254,6 +285,33 @@ button {
   opacity: 0.5;
 }
 
+/* 水下光斑：两条缓慢漂移的焦散光带，纯 transform 动画 */
+.scene__caustic {
+  position: absolute;
+  inset: -28% -42%;
+  background:
+    repeating-linear-gradient(
+      104deg,
+      transparent 0 6%,
+      var(--caustic) 8%,
+      transparent 13% 25%
+    ),
+    radial-gradient(58% 48% at 68% 18%, rgba(120, 200, 255, 0.18), transparent 70%);
+  filter: blur(16px);
+  mix-blend-mode: screen;
+  opacity: 0.85;
+  animation: caustic-drift 26s ease-in-out infinite alternate;
+}
+
+@keyframes caustic-drift {
+  from {
+    transform: translate3d(-3%, -2%, 0) rotate(-8deg);
+  }
+  to {
+    transform: translate3d(3%, 2%, 0) rotate(-5deg);
+  }
+}
+
 .scene__bubble {
   position: absolute;
   bottom: -60px;
@@ -324,10 +382,12 @@ button {
   flex-direction: column;
   gap: clamp(10px, 2vh, 18px);
   padding: clamp(12px, 2.6vw, 18px);
-  border-radius: clamp(24px, 4.4vw, 34px);
-  background: var(--glass-bg);
+  border-radius: clamp(26px, 4.6vw, 36px);
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.4), transparent 58%),
+    linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg));
   border: 1px solid var(--glass-edge);
-  box-shadow: var(--glass-shadow), var(--glass-inset);
+  box-shadow: var(--glass-shadow), var(--glass-inset), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
   backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur);
   position: relative;
@@ -342,6 +402,20 @@ button {
   background: var(--sheen);
   pointer-events: none;
   opacity: 0.8;
+}
+
+/* 底部一条很淡的水光，给玻璃卡一个“水面”收口 */
+.shell::after {
+  content: "";
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  bottom: 0;
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent-2), transparent);
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 @keyframes shell-in {
@@ -377,12 +451,15 @@ button {
   flex: none;
   display: grid;
   place-items: center;
-  width: clamp(34px, 9vw, 42px);
-  height: clamp(34px, 9vw, 42px);
-  border-radius: 32%;
+  width: clamp(36px, 9.4vw, 44px);
+  height: clamp(36px, 9.4vw, 44px);
+  border-radius: 34%;
   font-size: clamp(16px, 4.4vw, 20px);
-  background: linear-gradient(150deg, #7fd4ff, #1899d6 58%, #0b6fb8);
-  box-shadow: 0 10px 20px -12px rgba(24, 153, 214, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  background:
+    radial-gradient(80% 70% at 32% 24%, rgba(255, 255, 255, 0.9), transparent 55%),
+    linear-gradient(150deg, #7fd4ff, #1899d6 58%, #0b6fb8);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 12px 24px -12px rgba(24, 153, 214, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 .brand__meta {
@@ -395,7 +472,7 @@ button {
   line-height: 1.05;
   font-weight: 800;
   letter-spacing: -0.02em;
-  background: linear-gradient(100deg, var(--ink), var(--accent));
+  background: linear-gradient(100deg, var(--ink), var(--accent) 62%, var(--accent-2));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -421,13 +498,22 @@ button {
 .score {
   min-width: clamp(56px, 14.5vw, 72px);
   padding: 6px 10px 7px;
-  border-radius: 16px;
+  border-radius: 18px;
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-edge);
-  box-shadow: var(--glass-inset);
+  box-shadow: var(--glass-inset), 0 8px 18px -16px rgba(20, 40, 70, 0.9);
   text-align: center;
   position: relative;
   overflow: hidden;
+}
+
+.score::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 46%);
+  pointer-events: none;
 }
 
 .score__k {
@@ -485,10 +571,10 @@ button {
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 228, 150, 0.95), rgba(247, 194, 92, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 8px 18px -12px rgba(240, 180, 60, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  color: #5c3a04;
+  background: linear-gradient(180deg, rgba(255, 244, 224, 0.95), rgba(242, 229, 203, 0.92));
+  border: 1px solid rgba(255, 245, 225, 0.75);
+  box-shadow: 0 8px 18px -12px rgba(160, 130, 80, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  color: #5b4a2b;
   font-size: clamp(10px, 2.7vw, 11px);
   font-weight: 650;
   animation: buff-in 320ms var(--ease-spring) both;
@@ -533,14 +619,26 @@ button {
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: clamp(20px, 4vw, 28px);
-  background: var(--board-bg);
+  border-radius: clamp(22px, 4.4vw, 30px);
+  background:
+    radial-gradient(120% 90% at 50% -8%, rgba(255, 255, 255, 0.18), transparent 58%),
+    linear-gradient(160deg, var(--board-bg), var(--board-bg));
   border: 1px solid var(--board-edge);
-  box-shadow: var(--board-shadow);
+  box-shadow: var(--board-shadow), 0 0 34px -18px rgba(80, 190, 255, 0.55);
   touch-action: none;
   overflow: hidden;
   backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur);
+}
+
+.board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(90% 60% at 50% 0%, rgba(255, 255, 255, 0.16), transparent 62%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .board::after {
@@ -567,7 +665,7 @@ button {
   border-radius: var(--radius);
   background: var(--cell-bg);
   border: 1px solid var(--cell-edge);
-  box-shadow: inset 0 1px 2px rgba(16, 28, 52, 0.045);
+  box-shadow: inset 0 1px 2px rgba(16, 28, 52, 0.05), inset 0 -6px 12px -8px rgba(16, 28, 52, 0.18);
 }
 
 .board__tiles,
@@ -631,7 +729,6 @@ button {
     inset 0 1px 0 rgb(255 255 255 / 0.9), inset 0 -8px 16px -10px rgb(var(--glow, 40 60 110) / 0.5);
   transition: box-shadow 200ms ease, filter 200ms ease;
 }
-
 .tile__face::before {
   content: "";
   position: absolute;
@@ -819,58 +916,61 @@ button {
 .tile[data-rank="5"] .tile__face,
 .mini[data-rank="5"] .mini__face {
   background:
-    radial-gradient(120% 90% at 22% 12%, rgba(255, 255, 255, 0.92), transparent 52%),
+    radial-gradient(130% 95% at 26% 8%, rgba(255, 255, 255, 0.94), transparent 56%),
     linear-gradient(
-      145deg,
-      hsl(var(--hue, 196) var(--tone-sat, 96%) var(--tone-a, 74%) / 0.96),
-      hsl(var(--hue2, 230) var(--tone-sat, 92%) var(--tone-b, 58%) / 0.94)
+      148deg,
+      hsl(var(--hue, 202) var(--tone-sat, 44%) var(--tone-a, 84%) / 0.96),
+      hsl(var(--hue2, 218) var(--tone-sat, 42%) var(--tone-b, 75%) / 0.94)
     );
-  color: rgb(26 22 10 / 0.94);
-  border-color: rgb(255 255 255 / 0.8);
+  color: rgb(40 48 60 / 0.92);
+  border-color: rgb(255 255 255 / 0.86);
   box-shadow:
-    0 14px 28px -16px hsl(var(--hue, 196) 90% 46% / 0.85),
-    0 0 0 2px var(--rarity, #dda23a) inset,
-    inset 0 1px 0 rgb(255 255 255 / 0.9);
+    0 16px 30px -20px hsl(var(--hue, 202) 30% 32% / 0.5),
+    inset 0 1px 0 rgb(255 255 255 / 0.95);
 }
 
-/* 稀有度让材质深浅略有差别：普通最轻，稀有更实，传说更亮并带光晕 */
+/* v2.4：只用低饱和的明度差做区分，不再叠电光蓝描边 */
 .tile[data-rank="5"][data-rarity="common"] .tile__face,
 .mini[data-rank="5"][data-rarity="common"] .mini__face {
-  --tone-a: 80%;
-  --tone-b: 68%;
-  --tone-sat: 88%;
+  --tone-a: 86%;
+  --tone-b: 78%;
+  --tone-sat: 42%;
 }
 
 .tile[data-rank="5"][data-rarity="rare"] .tile__face,
 .mini[data-rank="5"][data-rarity="rare"] .mini__face {
-  --tone-a: 76%;
-  --tone-b: 62%;
-  --tone-sat: 96%;
+  --tone-a: 84%;
+  --tone-b: 73%;
+  --tone-sat: 50%;
+  box-shadow:
+    0 16px 30px -20px hsl(var(--hue, 202) 28% 30% / 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .tile[data-rank="5"][data-rarity="legend"] .tile__face,
 .mini[data-rank="5"][data-rarity="legend"] .mini__face {
-  --tone-a: 79%;
-  --tone-b: 66%;
-  --tone-sat: 100%;
+  --tone-a: 86%;
+  --tone-b: 75%;
+  --tone-sat: 46%;
   box-shadow:
-    0 16px 32px -14px hsl(var(--hue, 196) 94% 50% / 0.9),
-    0 0 0 2px var(--rarity, #dda23a) inset,
-    0 0 18px hsl(var(--hue, 196) 94% 62% / 0.42),
-    inset 0 1px 0 rgb(255 255 255 / 0.92);
+    0 18px 34px -20px rgba(110, 88, 50, 0.32),
+    inset 0 0 0 1px rgba(255, 244, 222, 0.76),
+    0 0 20px -12px rgba(196, 166, 117, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .tile[data-rank="5"] .tile__face::before {
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
-/* 特殊产物：金虹描边，和普通词条区分（特异性要压过传说光晕） */
+/* 特殊产物：香槟金细边，和普通词条区分，但不加亮黄光 */
 .tile[data-rank="5"][data-special="1"] .tile__face {
   box-shadow:
-    0 16px 32px -14px rgba(255, 190, 80, 0.9),
-    0 0 0 2px var(--rarity, #dda23a) inset,
-    0 0 18px rgba(255, 214, 120, 0.5),
-    inset 0 1px 0 rgb(255 255 255 / 0.9);
+    0 18px 34px -18px rgba(120, 95, 55, 0.36),
+    inset 0 0 0 1px rgba(255, 240, 210, 0.82),
+    0 0 22px -12px rgba(205, 175, 120, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 .tile__label--codex {
@@ -914,7 +1014,7 @@ button {
   letter-spacing: 0;
 }
 
-/* 稀有度角标：普 / 稀 / 传（特殊产物显示「特」） */
+/* 稀有度角标：稀 / 传（特殊产物显示「特」），低饱和玻璃胶囊 */
 .tile__rarity {
   position: absolute;
   top: 5%;
@@ -927,26 +1027,28 @@ button {
   font-weight: 800;
   line-height: 1.25;
   text-align: center;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid currentColor;
-  box-shadow: 0 2px 8px -4px rgba(10, 30, 50, 0.4);
+  color: #41586b;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(70, 96, 118, 0.24);
+  box-shadow: none;
 }
 
 .tile__rarity[data-rarity="common"] {
-  color: #2c7183;
-  background: rgba(208, 241, 247, 0.92);
+  color: #5d7180;
+  background: rgba(245, 249, 251, 0.92);
 }
 
 .tile__rarity[data-rarity="rare"] {
-  color: #1d5cbe;
-  background: rgba(207, 227, 255, 0.94);
+  color: #4d6a80;
+  background: rgba(243, 248, 251, 0.94);
+  border-color: rgba(120, 150, 172, 0.4);
 }
 
 .tile__rarity[data-rarity="legend"] {
-  color: #6d4306;
-  background: linear-gradient(180deg, #ffe9b8, #f2be5c);
-  border-color: rgba(255, 246, 219, 0.95);
-  box-shadow: 0 2px 10px -4px rgba(160, 105, 10, 0.6);
+  color: #6b5833;
+  background: linear-gradient(180deg, #f9f2e4, #eddfc2);
+  border-color: rgba(198, 172, 126, 0.75);
+  box-shadow: none;
 }
 
 /* 配方提示：+军 / +赢² */
@@ -964,6 +1066,75 @@ button {
   color: rgba(16, 36, 56, 0.88);
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.85);
+}
+
+/* ---------- v2.4 稀有度光效：低饱和、静态、只做「玻璃边光」 ---------- */
+
+.tile__aura {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 稀有：一圈很细的银白边光 + 左上角固定高光，不移动、不闪 */
+.tile__aura--rare {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.26), transparent 42%);
+  box-shadow:
+    inset 0 0 0 1px var(--rare-aura),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* 传说：香槟金细边 + 很轻的顶部暖光，8s 呼吸，不旋转、不闪点 */
+.tile__aura--legend {
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--legend-aura), transparent 64%),
+    linear-gradient(150deg, rgba(255, 255, 255, 0.2), transparent 40%);
+  box-shadow:
+    inset 0 0 0 1px var(--legend-aura),
+    inset 0 0 20px rgba(255, 238, 205, 0.2);
+  animation: aura-breathe 8s ease-in-out infinite;
+}
+
+@keyframes aura-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.mini .tile__aura--legend {
+  animation-duration: 10s;
+}
+
+/* 图鉴卡片：同样只保留静态边光 / 很轻的香槟光晕 */
+.card[data-rarity="rare"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(152deg, rgba(255, 255, 255, 0.34), transparent 46%);
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.card[data-rarity="legend"]::before,
+.card[data-kind="special"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(85% 70% at 50% 0%, var(--legend-aura), transparent 72%);
+  pointer-events: none;
+  opacity: 0.75;
+  animation: aura-breathe 8s ease-in-out infinite;
 }
 
 /* ---------- 出生 / 合并 / 飘分 ---------- */
@@ -1055,6 +1226,53 @@ button {
   }
 }
 
+/* ---------- v2.4「妙」爱心粒子：跟随妙所在格，只做 transform / opacity ---------- */
+
+.heart {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--tile);
+  height: var(--tile);
+  transform: translate3d(
+    calc(var(--pad) + var(--c) * var(--step)),
+    calc(var(--pad) + var(--r) * var(--step)),
+    0
+  );
+  z-index: 3;
+  pointer-events: none;
+}
+
+.heart__glyph {
+  position: absolute;
+  bottom: 14%;
+  transform: translateX(-50%);
+  font-size: calc(var(--tile) * 0.32 * var(--size, 1));
+  line-height: 1;
+  color: var(--heart-ink);
+  filter: drop-shadow(0 0 8px var(--heart-glow));
+  animation: heart-rise 2400ms var(--ease-out) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+@keyframes heart-rise {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(14%) scale(0.5) rotate(-12deg);
+  }
+  16% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(calc(var(--tile) * -1.8)) scale(1.08)
+      rotate(14deg);
+  }
+}
+
 /* ---------- 提示与按钮 ---------- */
 
 .hint {
@@ -1069,7 +1287,46 @@ button {
   position: relative;
   z-index: 1;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bar__main {
+  display: flex;
   gap: clamp(5px, 1.6vw, 9px);
+}
+
+.bar__tools {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+/* 工具组与主操作之间一条很淡的分隔线，降低误触 */
+.bar__tools::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-edge), transparent);
+  opacity: 0.8;
+}
+
+.bar__tools .pill {
+  flex: 0 0 auto;
+  width: clamp(34px, 9vw, 38px);
+  height: clamp(30px, 8vw, 34px);
+  padding: 0;
+  font-size: clamp(13px, 3.5vw, 15px);
+  opacity: 0.82;
+}
+
+.bar__tools .pill:hover {
+  opacity: 1;
 }
 
 .pill {
@@ -1115,9 +1372,9 @@ button {
 .pill--primary {
   flex: 1.25;
   color: var(--pill-primary-ink);
-  background: var(--pill-primary);
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 0 12px 26px -14px rgba(12, 140, 233, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  background: linear-gradient(135deg, #3cc0ff, #0c8ce9 56%, #0a72c4);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 14px 28px -14px rgba(12, 140, 233, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .pill--primary:hover:not(:disabled) {
@@ -1154,7 +1411,7 @@ button {
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 40;
   display: grid;
   place-items: center;
   padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px
@@ -1321,6 +1578,80 @@ button {
   padding-bottom: 11px;
 }
 
+/* ---------- 关于弹层（v2.4）：简介分段 + 仓库入口做成整行按钮 ---------- */
+
+.overlay[data-kind="about"] .panel--overlay {
+  width: min(100%, 23rem);
+  padding: 24px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.overlay[data-kind="about"] .panel__eyebrow {
+  flex: none;
+  color: var(--accent);
+  text-transform: none;
+  letter-spacing: 0.1em;
+}
+
+.overlay[data-kind="about"] .panel__title {
+  flex: none;
+  font-size: clamp(26px, 7.6vw, 33px);
+  background: linear-gradient(100deg, var(--ink), var(--accent) 58%, var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 正文单独滚动，仓库入口与关闭按钮始终留在屏幕内 */
+.overlay[data-kind="about"] .panel__text {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 10px;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  font-size: clamp(12.5px, 3.3vw, 13.5px);
+  line-height: 1.64;
+}
+
+.overlay[data-kind="about"] .panel__actions {
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.overlay[data-kind="about"] .panel__actions .pill {
+  flex: none;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  text-align: left;
+}
+
+.overlay[data-kind="about"] a.pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--about-link-bg);
+  font-weight: 650;
+}
+
+.overlay[data-kind="about"] a.pill::after {
+  content: "↗";
+  font-size: 13px;
+  opacity: 0.45;
+}
+
+.overlay[data-kind="about"] .panel__actions .pill--primary {
+  margin-top: 6px;
+  text-align: center;
+}
+
 /* 通关礼花：亮片 + 水滴 */
 .burst {
   position: absolute;
@@ -1445,6 +1776,44 @@ button {
 }
 
 .sheet__close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* 抽屉底部：开始按钮 + 低频的「关于」入口（v2.4 从底栏迁过来，避免误触） */
+.sheet__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.sheet__about {
+  flex: none;
+  align-self: center;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: clamp(10.5px, 2.9vw, 11.5px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--ink-3);
+  text-underline-offset: 3px;
+  transition: color 160ms ease, background 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sheet__about:hover {
+  color: var(--ink-2);
+  background: var(--row-bg);
+}
+
+.sheet__about:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
@@ -1669,8 +2038,8 @@ button {
   font-size: 10px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #6a3f05;
-  background: linear-gradient(180deg, #ffe3a3, #f7c25c);
+  color: #6b5833;
+  background: linear-gradient(180deg, #f6eedf, #ead8b6);
   vertical-align: 1px;
 }
 
@@ -1708,9 +2077,62 @@ button {
   border-radius: 999px;
   font-size: 10.5px;
   font-weight: 700;
-  color: #6a3f05;
-  background: linear-gradient(180deg, #ffe7b0, #f6bf55);
+  color: #6b5833;
+  background: linear-gradient(180deg, #f8f1e2, #ecdcbe);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* v2.4 收集进度条：未集齐只给比例，集齐后才在标题里写总数 */
+.codex__bar {
+  position: relative;
+  height: 9px;
+  margin: 2px 0 6px;
+  border-radius: 999px;
+  background: var(--bar-track);
+  border: 1px solid var(--glass-edge);
+  overflow: hidden;
+}
+
+.codex__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--bar-fill);
+  box-shadow: 0 0 12px rgba(80, 190, 255, 0.4);
+  transition: width 420ms var(--ease-out);
+}
+
+/* 集齐后的「未完待续」收尾 */
+.codex__continue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 4px;
+  padding: 18px 16px 20px;
+  border-radius: 20px;
+  border: 1px dashed var(--mystery-edge);
+  background: var(--mystery-bg);
+  text-align: center;
+  animation: card-in 420ms var(--ease-out) both;
+}
+
+.codex__continue-text {
+  font-size: clamp(19px, 5.4vw, 23px);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  background: linear-gradient(100deg, var(--accent), var(--accent-2) 46%, var(--gold));
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: win-shine 5.5s linear infinite;
+}
+
+.codex__continue-hint {
+  margin: 0;
+  font-size: clamp(10.5px, 2.9vw, 11.5px);
+  color: var(--ink-3);
 }
 
 .codex__grid {
@@ -1728,6 +2150,7 @@ button {
   box-shadow: 0 14px 32px -22px rgba(20, 32, 60, 0.85), var(--glass-inset);
   animation: card-in 320ms var(--ease-out) both;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .card::after {
@@ -1761,37 +2184,37 @@ button {
     radial-gradient(120% 90% at 22% 12%, rgba(255, 255, 255, 0.92), transparent 54%),
     linear-gradient(
       145deg,
-      hsl(var(--hue, 196) var(--tone-sat, 96%) var(--tone-a, 74%) / 0.95),
-      hsl(var(--hue2, 230) var(--tone-sat, 92%) var(--tone-b, 58%) / 0.92)
+      hsl(var(--hue, 202) var(--tone-sat, 44%) var(--tone-a, 84%) / 0.95),
+      hsl(var(--hue2, 218) var(--tone-sat, 42%) var(--tone-b, 75%) / 0.92)
     );
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
-/* 卡片和棋子用同一套稀有度深浅，保持图鉴与棋盘观感一致 */
+/* 卡片和棋子用同一套低饱和稀有度材质，保持图鉴与棋盘观感一致 */
 .card[data-rarity="common"] {
-  --tone-a: 80%;
-  --tone-b: 68%;
-  --tone-sat: 88%;
+  --tone-a: 86%;
+  --tone-b: 78%;
+  --tone-sat: 42%;
 }
 
 .card[data-rarity="rare"] {
-  --tone-a: 76%;
-  --tone-b: 62%;
-  --tone-sat: 96%;
+  --tone-a: 84%;
+  --tone-b: 73%;
+  --tone-sat: 50%;
 }
 
 .card[data-rarity="legend"],
 .card[data-kind="special"] {
-  --tone-a: 79%;
-  --tone-b: 66%;
-  --tone-sat: 100%;
+  --tone-a: 86%;
+  --tone-b: 75%;
+  --tone-sat: 46%;
 }
 
 .card__name {
   font-size: clamp(15px, 4.2vw, 17px);
   font-weight: 750;
   letter-spacing: -0.03em;
-  color: rgb(30 24 4 / 0.94);
+  color: rgb(40 48 60 / 0.92);
   text-align: center;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
   word-break: break-word;
@@ -1826,27 +2249,27 @@ button {
   color: var(--ink-2);
 }
 
-.card[data-rarity="common"] .card__rarity { color: #2c7183; }
-.card[data-rarity="rare"] .card__rarity { color: #2a63c4; }
-.card[data-rarity="legend"] .card__rarity { color: #96660f; }
+.card[data-rarity="common"] .card__rarity { color: #5d7180; }
+.card[data-rarity="rare"] .card__rarity { color: #4d6a80; }
+.card[data-rarity="legend"] .card__rarity { color: #8a713f; }
 
-:root[data-theme="dark"] .card[data-rarity="common"] .card__rarity { color: #8fd0df; }
-:root[data-theme="dark"] .card[data-rarity="rare"] .card__rarity { color: #8fb8ff; }
-:root[data-theme="dark"] .card[data-rarity="legend"] .card__rarity { color: #f2c86b; }
+:root[data-theme="dark"] .card[data-rarity="common"] .card__rarity { color: #9fb3c2; }
+:root[data-theme="dark"] .card[data-rarity="rare"] .card__rarity { color: #a9bfd2; }
+:root[data-theme="dark"] .card[data-rarity="legend"] .card__rarity { color: #d9c08a; }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .card[data-rarity="common"] .card__rarity { color: #8fd0df; }
-  :root:not([data-theme="light"]) .card[data-rarity="rare"] .card__rarity { color: #8fb8ff; }
-  :root:not([data-theme="light"]) .card[data-rarity="legend"] .card__rarity { color: #f2c86b; }
+  :root:not([data-theme="light"]) .card[data-rarity="common"] .card__rarity { color: #9fb3c2; }
+  :root:not([data-theme="light"]) .card[data-rarity="rare"] .card__rarity { color: #a9bfd2; }
+  :root:not([data-theme="light"]) .card[data-rarity="legend"] .card__rarity { color: #d9c08a; }
 }
 
 .card[data-kind="special"] .card__rarity {
   padding: 2px 8px;
   border-radius: 999px;
-  color: #6a3f05;
+  color: #6b5833;
   letter-spacing: 0.04em;
-  background: linear-gradient(180deg, #ffe9b8, #f0b74d);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: linear-gradient(180deg, #f8f1e2, #ecdcbe);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .card__times {
@@ -1953,12 +2376,26 @@ button {
   padding: 30px 24px 24px;
   border-radius: 34px;
   text-align: center;
-  background: var(--glass-bg-strong);
+  background:
+    radial-gradient(130% 80% at 50% -12%, rgba(255, 255, 255, 0.55), transparent 55%),
+    linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg));
   border: 1px solid var(--glass-edge);
-  box-shadow: 0 40px 90px -34px rgba(8, 16, 34, 0.55), var(--glass-inset);
+  box-shadow: 0 40px 90px -34px rgba(8, 16, 34, 0.55), var(--glass-inset),
+    0 0 40px -22px rgba(60, 180, 255, 0.6);
   backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur);
   animation: intro-card 620ms var(--ease-spring) both;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.intro__card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.32), transparent 42%);
+  pointer-events: none;
 }
 
 @keyframes intro-card {
@@ -2010,7 +2447,7 @@ button {
   line-height: 1.08;
   font-weight: 800;
   letter-spacing: -0.04em;
-  background: linear-gradient(100deg, #0c8ce9, #33c2d8 38%, #f7c558 70%, #0c8ce9);
+  background: linear-gradient(100deg, var(--accent), var(--accent-2) 38%, var(--gold) 72%, var(--accent));
   background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -2095,6 +2532,35 @@ button {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .intro__title {
     background-image: linear-gradient(100deg, #7fd4ff, #5ce0e8 38%, #ffd98a 70%, #7fd4ff);
+  }
+}
+
+/* 手动深色 / 系统深色下，关于标题也要够亮 */
+:root[data-theme="dark"] .overlay[data-kind="about"] .panel__title {
+  background-image: linear-gradient(100deg, #eaf6ff, #7fd4ff 58%, #5ce0e8);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .overlay[data-kind="about"] .panel__title {
+    background-image: linear-gradient(100deg, #eaf6ff, #7fd4ff 58%, #5ce0e8);
+  }
+}
+
+/* 深色下进度条描边与工具按钮更清楚一点 */
+:root[data-theme="dark"] .bar__tools::before {
+  opacity: 0.6;
+}
+
+:root[data-theme="dark"] .sheet__about {
+  color: rgba(226, 242, 255, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .bar__tools::before {
+    opacity: 0.6;
+  }
+  :root:not([data-theme="light"]) .sheet__about {
+    color: rgba(226, 242, 255, 0.5);
   }
 }
 

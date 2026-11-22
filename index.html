@@ -22,6 +22,7 @@
     <main class="app" id="app">
       <div class="scene" aria-hidden="true">
         <span class="scene__glow"></span>
+        <span class="scene__caustic"></span>
         <span class="scene__bubble scene__bubble--a"></span>
         <span class="scene__bubble scene__bubble--b"></span>
         <span class="scene__bubble scene__bubble--c"></span>
@@ -99,12 +100,15 @@
         </section>
 
         <footer class="bar">
-          <button class="pill pill--primary" id="btn-new" type="button">新游戏</button>
-          <button class="pill" id="btn-undo" type="button" disabled>撤销</button>
-          <button class="pill pill--ghost" id="btn-guide" type="button">图鉴</button>
-          <button class="pill pill--ghost" id="btn-about" type="button">关于</button>
-          <button class="pill pill--icon" id="btn-sound" type="button" aria-label="音效：开，点击关闭" aria-pressed="true" title="音效：开（点击关闭）">🔊</button>
-          <button class="pill pill--icon" id="btn-theme" type="button" aria-label="外观：跟随系统，点击切换">◐</button>
+          <div class="bar__main">
+            <button class="pill pill--primary" id="btn-new" type="button">新游戏</button>
+            <button class="pill" id="btn-undo" type="button" disabled>撤销</button>
+            <button class="pill pill--ghost" id="btn-guide" type="button">图鉴</button>
+          </div>
+          <div class="bar__tools" aria-label="偏好设置">
+            <button class="pill pill--icon" id="btn-sound" type="button" aria-label="音效：开，点击关闭" aria-pressed="true" title="音效：开（点击关闭）">🔊</button>
+            <button class="pill pill--icon" id="btn-theme" type="button" aria-label="外观：跟随系统，点击切换">◐</button>
+          </div>
         </footer>
       </div>
 
@@ -159,7 +163,11 @@
           <div class="pane" id="pane-codex" hidden>
             <div class="codex" id="codex"></div>
           </div>
-          <button class="pill pill--primary pill--wide" id="sheet-done" type="button">开始合成</button>
+          <div class="sheet__foot">
+            <button class="pill pill--primary pill--wide" id="sheet-done" type="button">开始合成</button>
+            <!-- 「关于」是低频功能：放进图鉴底部，远离主操作区，避免误触 -->
+            <button class="sheet__about" id="btn-about" type="button">关于本作 · 版本与仓库</button>
+          </div>
         </div>
       </div>
     </main>

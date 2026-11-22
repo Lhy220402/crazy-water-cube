@@ -16,6 +16,8 @@ export interface BoardView {
   born(merges: Merge[]): void;
   pop(merges: Merge[], mult: number): void;
   spawnTile(spawn: Spawn): void;
+  /** 「妙」增益期间：在妙所在格生成爱心粒子（跟随妙移动；纯 CSS 动画） */
+  heartBurst(cells: readonly number[]): void;
   nudge(): void;
   layout(): void;
   destroy(): void;
@@ -29,10 +31,13 @@ export interface BoardOptions {
   grid: HTMLElement;
   tilesLayer: HTMLElement;
   fxLayer: HTMLElement;
+  /** 粒子随机源；默认 Math.random */
+  rng?: () => number;
 }
 
 export function createBoard(opts: BoardOptions): BoardView {
   const { doc, w, config, board, grid, tilesLayer, fxLayer } = opts;
+  const rng = opts.rng ?? Math.random;
   const views = new Map<number, HTMLElement>();
   let nudgeTimer: number | null = null;
 
@@ -52,18 +57,26 @@ export function createBoard(opts: BoardOptions): BoardView {
     return label;
   }
 
-  /** 词条方块内容：名字（圈隋带圆环）+ 稀有度角标 + 配方提示 */
+  /** 词条方块内容：名字（圆环词条显示 tileName）+ 稀有度角标 + 配方提示 + 稀有/传说光效 */
   function buildCodexContent(entry: CodexEntry | undefined, fallbackId: string): HTMLElement[] {
-    const text = entry?.name ?? fallbackId;
+    const text = entry?.tileName ?? entry?.name ?? fallbackId;
     const width = [...text].length;
     const size = width <= 2 ? 'is-s1' : width === 3 ? 'is-s2' : width === 4 ? 'is-s3' : 'is-s4';
     const label = el(doc, 'span', `tile__label tile__label--codex ${size}`);
     const main = el(doc, 'span', `tile__main${entry?.ring ? ' tile__main--ring' : ''}`, text);
     label.append(main);
 
-    const nodes: HTMLElement[] = [label];
+    const nodes: HTMLElement[] = [];
     const special = specialProduct(entry?.id);
     const rarity = RARITIES[special ? 'legend' : (entry?.rarity ?? 'legend')];
+    const rarityId = special ? 'legend' : (entry?.rarity ?? 'legend');
+    // v2.4 光效：稀有 = 流光扫过，传说 = 呼吸光晕 + 闪点（只在稀有/传说上出现）
+    if (rarityId === 'rare' || rarityId === 'legend') {
+      const aura = el(doc, 'span', `tile__aura tile__aura--${rarityId}`);
+      aura.setAttribute('aria-hidden', 'true');
+      nodes.push(aura);
+    }
+    nodes.push(label);
     const chip = el(
       doc,
       'span',
@@ -184,6 +197,30 @@ export function createBoard(opts: BoardOptions): BoardView {
     views.set(spawn.id, node);
   }
 
+  const HEART_GLYPHS = ['❤', '💗', '💖'];
+
+  /**
+   * 爱心粒子：在每个「妙」所在格生成一圈爱心，粒子从妙的格子里升起；
+   * 妙移动后会在新位置生成（跟随妙），不再随机铺满棋盘。
+   */
+  function heartBurst(cells: readonly number[]): void {
+    for (const cell of cells) {
+      for (let i = 0; i < 7; i += 1) {
+        const node = el(doc, 'span', 'heart');
+        node.setAttribute('aria-hidden', 'true');
+        setCell(node, cell, config.size);
+        const glyph = el(doc, 'span', 'heart__glyph', HEART_GLYPHS[i % HEART_GLYPHS.length]!);
+        // 爱心在妙的格子里左右散开一点，再往上飘
+        glyph.style.left = `${44 + Math.round((rng() - 0.5) * 46)}%`;
+        glyph.style.setProperty('--delay', `${Math.round(rng() * 240)}ms`);
+        glyph.style.setProperty('--size', `${(0.72 + rng() * 0.5).toFixed(2)}`);
+        glyph.addEventListener('animationend', () => node.remove(), { once: true });
+        node.append(glyph);
+        fxLayer.append(node);
+      }
+    }
+  }
+
   function nudge(): void {
     if (nudgeTimer !== null) return;
     board.classList.remove('board--nudge');
@@ -226,6 +263,7 @@ export function createBoard(opts: BoardOptions): BoardView {
     born,
     pop,
     spawnTile,
+    heartBurst,
     nudge,
     layout,
     destroy() {

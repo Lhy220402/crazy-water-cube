@@ -18,12 +18,13 @@ check(/<style>/.test(html), '缺少内联 <style>');
 check(/<script>/.test(html) && !/<script[^>]+type="module"/.test(html), '脚本必须是内联经典脚本');
 check(!/<link\s+rel="stylesheet"/i.test(html), '仍存在外链样式表');
 check(!/<script[^>]+src=/i.test(html), '仍存在外链脚本');
-// 无外部资源：只允许「关于」里指向 Gitee / GitHub / GitHub Pages 的导航链接（不是加载资源）
+// 无外部资源：只允许「关于」里指向 Gitee / GitHub 的导航链接（不是加载资源）
+// v2.4 起「关于」不再放 GitHub Pages 在线玩按钮（发给同学的已经是 Pages），允许名单同步收紧
 check(
-  !/https?:\/\/(?!www\.w3\.org|gitee\.com|github\.com|lhy220402\.github\.io)/i.test(
+  !/https?:\/\/(?!www\.w3\.org|gitee\.com|github\.com)/i.test(
     html.replace(/data:[^"')\s]+/g, ''),
   ),
-  '存在 http(s) 外链资源（仓库 / 在线玩导航链接除外）',
+  '存在 http(s) 外链资源（仓库导航链接除外）',
 );
 check(html.includes('疯狂水立方') && html.includes('OLD FIVE'), '缺少品牌与合成体系文案');
 check(html.includes('军') && html.includes('赢') && html.includes('Lec'), '缺少合成体系文案');
@@ -39,7 +40,33 @@ check(
   html.includes('钢') && html.includes('威海') && html.includes('钉剑') && html.includes('君竹'),
   '缺少 v2.3 新增词条（钢 / 威海 / 钉剑 / 君竹）',
 );
+// v2.4：5 条新词条 + 彪 + 水³ → 妙 + 图鉴进度条/未完待续 + 稀有度光效/爱心粒子
+check(
+  html.includes('成龙') &&
+    html.includes('霸天') &&
+    html.includes('赵一鸣') &&
+    html.includes('塑料袋'),
+  '缺少 v2.4 新增词条（成龙 / 霸天 / 能 / 赵一鸣 / 塑料袋）',
+);
+check(
+  html.includes('妙') && html.includes('庄宗受而藏之于庙'),
+  '缺少 v2.4 的「彪 + 水³ → 妙」配方文案',
+);
+check(
+  html.includes('隋圆') && html.includes('隋军隋圆'),
+  '缺少圆环词条/特殊产物的新显示名（隋圆 / 隋军隋圆）',
+);
+check(
+  html.includes('codex__bar') && html.includes('未完待续'),
+  '缺少图鉴收集进度条 / 未完待续',
+);
+check(
+  html.includes('tile__aura') && html.includes('heart-rise'),
+  '缺少稀有度光效 / 爱心粒子',
+);
 check(html.includes('版本已更新') && html.includes('.version'), '缺少版本更新弹窗（jun2048.version）');
+// v2.4：关于里不再有在线玩按钮（GitHub Pages 已经是对外的正式入口）
+check(!html.includes('lhy220402.github.io'), '关于里不应再有 GitHub Pages 在线玩链接');
 check(html.includes('id="intro"') && html.includes('id="intro-start"'), '缺少开场界面');
 check(html.includes('id="btn-sound"'), '缺少声音开关');
 // favicon：三滴水滴正三角，SVG 主 + PNG 兜底，都必须是 data URI（无外部图标）

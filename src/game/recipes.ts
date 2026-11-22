@@ -44,9 +44,10 @@ export const PRODUCTS: Readonly<Record<string, SpecialProduct>> = {
     buff: { id: 'sui-jun', label: '水军·蓄水', mult: 2, moves: 8 },
   },
   'sui-jun-ring': {
-    entry: { id: 'sui-jun-ring', name: '水军·环', rarity: 'legend', kind: 'special', hue: 232, hue2: 260 },
+    // v2.4：显示名按用户原文改成「隋军隋圆」（内部 id 仍 sui-jun-ring，存档兼容）
+    entry: { id: 'sui-jun-ring', name: '隋军隋圆', rarity: 'legend', kind: 'special', hue: 232, hue2: 260 },
     points: 128,
-    buff: { id: 'sui-jun-ring', label: '水军·洪峰', mult: 3, moves: 12 },
+    buff: { id: 'sui-jun-ring', label: '隋军隋圆·洪峰', mult: 3, moves: 12 },
   },
   // 隋 + 钢 → 水缸：传说级，但要两条随机词条才凑得齐，给 +128；
   // 增益与水军同一梯队（×2 / 8 步），符合「水缸和水军同一梯队」的设定
@@ -67,6 +68,13 @@ export const PRODUCTS: Readonly<Record<string, SpecialProduct>> = {
     points: 128,
     buff: { id: 'lina', label: '李娜·夺冠', mult: 2, moves: 8 },
   },
+  // 彪 + 水³ → 妙（v2.4）：传说彩蛋，+128 / ×2 / 10 步；
+  // 增益期间每次有效移动还会在棋盘上飘爱心粒子（纯表现，逻辑见 ui/board.ts + ui/app.ts）
+  miao: {
+    entry: { id: 'miao', name: '妙', rarity: 'legend', kind: 'special', hue: 304, hue2: 336 },
+    points: 128,
+    buff: { id: 'miao', label: '妙·藏庙', mult: 2, moves: 10 },
+  },
 };
 
 export const RECIPES: readonly Recipe[] = [
@@ -74,6 +82,7 @@ export const RECIPES: readonly Recipe[] = [
   { a: { variant: 'sui-ring' }, b: { rank: 0 }, product: 'sui-jun-ring' },
   { a: { variant: 'sui' }, b: { variant: 'gang' }, product: 'shui-gang' },
   { a: { variant: 'li' }, b: { variant: 'na' }, product: 'lina' },
+  { a: { variant: 'biao' }, b: { rank: 2 }, product: 'miao' },
   { a: { variant: 'ji' }, b: { rank: 1 }, product: 'ji-ying-ying' },
 ];
 

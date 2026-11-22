@@ -5,3 +5,6 @@ dist/
 
 # 工作区里与本项目无关的既有目录（另一个仓库），不要带上
 traceless/
+
+# 本地发行材料（不上传 git；发布附件在 /sdcard/Download/DSH-Go/）
+release/

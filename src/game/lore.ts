@@ -3,13 +3,13 @@
  *
  * ★ 想改文案，只改这一个文件。
  *   key = 词条/产物 id（见 codex.ts 与 recipes.ts），值 = 一段纯文本（不要写 Markdown 星号）。
- *   留空或缺失时会显示兜底句。
+ *   没有文案的词条（当前是「隋」「李娜」）不弹解释卡、图鉴卡片也不显示说明；
+ *   名字、稀有度、出现次数照常保留。
  *   带增益的特殊产物，解释里可以顺便说明增益；弹层右侧的「增益」数值会自动显示。
  */
 
 export const LORE: Readonly<Record<string, string>> = {
   // 随机词条
-  sui: '水立方里最常见的一个字，也是隋系组合的起点。',
   'eyu-qi': '鳄鱼怎么会有鳍呢',
   'sui-ring': '圆和隋是什么意思',
   'eyu-shi-jun': '鳄鱼怎么会食菌呢',
@@ -32,17 +32,23 @@ export const LORE: Readonly<Record<string, string>> = {
   weihai: '一个地名',
   dingjian: '钉子怎么能做剑？',
   junzhu: '竹子中的皇帝是吗',
+  // v2.4 新增 5 条（用户原文）
+  chenglong: '香港著名演艺明星',
+  batian: '所有人给我站一边！',
+  neng: '大黑能是谁',
+  zhaoyiming: '好想来购物袋怎么说',
+  sudailiao: '赵一鸣他家怎么说',
   // 特殊合成产物
   'sui-jun': '水里的军队',
   'sui-jun-ring': '666 一家齐上了',
   'shui-gang': '一种容器',
   'ji-ying-ying': '记才会赢！',
-  lina: 'Li 和 Na 拼在一起，就是冠军的名字：接下来 8 步，所有合成得分 ×2。',
+  miao: '庄宗受而藏之于庙',
+  // 隋 / 李娜：用户要求去掉解释，故不写 key（loreOf 返回空串）
 };
 
-export const LORE_FALLBACK = '这条词条的故事还在整理中，先把它收进图鉴。';
-
+/** 没有文案时返回空串：UI 不弹解释卡，图鉴卡片也不显示说明 */
 export function loreOf(id: string): string {
   const text = LORE[id];
-  return text && text.trim().length > 0 ? text : LORE_FALLBACK;
+  return text && text.trim().length > 0 ? text : '';
 }

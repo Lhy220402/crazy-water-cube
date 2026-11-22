@@ -1,4 +1,4 @@
-/** 「关于」弹层内容：简介 + 仓库链接。文案与链接全部来自 game/meta.ts。 */
+/** 「关于」弹层内容：简介 + 两个仓库入口（在线玩已并入 Pages，不再重复放按钮）。 */
 import { ABOUT_TEXT, GAME_NAME, GAME_VERSION, REPO_LINKS } from '../game/meta.ts';
 import type { OverlayContent } from './overlay.ts';
 
@@ -12,6 +12,6 @@ export function buildAbout(): OverlayContent {
       ...REPO_LINKS.map((link) => ({ label: link.label, href: link.url })),
       { label: '关闭', primary: true, action: () => {} },
     ],
-    focus: 'first',
+    focus: 'primary',
   };
 }

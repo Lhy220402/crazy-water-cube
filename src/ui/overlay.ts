@@ -90,6 +90,7 @@ export function createOverlay(opts: OverlayOptions): OverlayView {
     }
     kind = content.kind;
     afterClose = content.onClose ?? null;
+    overlay.dataset.kind = content.kind;
     eyebrow.textContent = content.eyebrow;
     title.textContent = content.title;
     title.classList.toggle('panel__title--win', content.kind === 'win');

@@ -72,19 +72,23 @@ export function createSheet(opts: SheetOptions): SheetView {
     if (isCodexRank(config, rank)) {
       const entry = variant ? entryById(config, variant) : undefined;
       const special = specialProduct(variant) !== undefined;
+      const rarityId = special ? 'legend' : (entry?.rarity ?? 'legend');
       const { hue, hue2 } = huesOf(entry, config.codex?.entries ?? [], variant ?? '');
       node.style.setProperty('--hue', String(hue));
       node.style.setProperty('--hue2', String(hue2));
-      node.style.setProperty(
-        '--rarity',
-        RARITIES[special ? 'legend' : (entry?.rarity ?? 'legend')].color,
-      );
+      node.style.setProperty('--rarity', RARITIES[rarityId].color);
       if (entry) node.dataset.rarity = special ? 'legend' : entry.rarity;
-      const text = entry?.name ?? '?';
+      const text = entry?.tileName ?? entry?.name ?? '?';
       const width = [...text].length;
       const size = width <= 2 ? 'is-s1' : width === 3 ? 'is-s2' : width === 4 ? 'is-s3' : 'is-s4';
       const label = el(doc, 'span', `tile__label tile__label--codex ${size}`);
       label.append(el(doc, 'span', `tile__main${entry?.ring ? ' tile__main--ring' : ''}`, text));
+      // 图鉴里的小方块也带稀有度光效，和棋盘保持一致
+      if (rarityId === 'rare' || rarityId === 'legend') {
+        const aura = el(doc, 'span', `tile__aura tile__aura--${rarityId}`);
+        aura.setAttribute('aria-hidden', 'true');
+        face.append(aura);
+      }
       face.append(label);
     } else {
       const tier = config.tiers[rank];
@@ -198,6 +202,18 @@ export function createSheet(opts: SheetOptions): SheetView {
     if (complete()) head.append(el(doc, 'span', 'codex__badge', '✦ 集齐'));
     codexList.append(head);
 
+    // v2.4 收集进度条：未集齐时不写总数（保持悬念），集齐后才揭示总数
+    const bar = el(doc, 'div', 'codex__bar');
+    bar.setAttribute('role', 'progressbar');
+    bar.setAttribute('aria-valuemin', '0');
+    bar.setAttribute('aria-valuemax', String(total));
+    bar.setAttribute('aria-valuenow', String(got));
+    bar.setAttribute('aria-label', '图鉴收集进度');
+    const fill = el(doc, 'span', 'codex__bar-fill');
+    fill.style.width = `${total > 0 ? Math.round((got / total) * 100) : 0}%`;
+    bar.append(fill);
+    codexList.append(bar);
+
     const collected = entries.filter((entry) => (counts[entry.id] ?? 0) > 0);
     if (collected.length > 0) {
       const grid = el(doc, 'div', 'codex__grid');
@@ -214,6 +230,12 @@ export function createSheet(opts: SheetOptions): SheetView {
       mystery.append(veil);
       mystery.append(el(doc, 'p', 'mystery__text', '还没收录的词条，继续合成才能揭开'));
       codexList.append(mystery);
+    } else {
+      // 集齐后的收尾：不把话说死，留一个继续更新的口子
+      const tail = el(doc, 'div', 'codex__continue');
+      tail.append(el(doc, 'span', 'codex__continue-text', '未完待续'));
+      tail.append(el(doc, 'p', 'codex__continue-hint', '新的词条还在路上，先把这一页收好'));
+      codexList.append(tail);
     }
 
     tabCodexCount.textContent = got > 0 ? String(got) : '';
@@ -245,7 +267,9 @@ export function createSheet(opts: SheetOptions): SheetView {
     );
     if (times > 1) meta.append(el(doc, 'span', 'card__times', `×${times}`));
     card.append(meta);
-    card.append(el(doc, 'p', 'card__desc', loreOf(entry.id)));
+    // 没有解释文案的词条（隋 / 李娜）不显示说明区
+    const desc = loreOf(entry.id);
+    if (desc.length > 0) card.append(el(doc, 'p', 'card__desc', desc));
     return card;
   }
 

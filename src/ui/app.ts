@@ -80,6 +80,7 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     grid: need<HTMLElement>(root, '#grid'),
     tilesLayer: need<HTMLElement>(root, '#tiles'),
     fxLayer: need<HTMLElement>(root, '#fx'),
+    rng,
   });
   const hud = createHud({
     doc, config,
@@ -468,6 +469,12 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   function doMove(dir: Direction): void {
     if (destroyed) return;
     if (dialogOpen()) return;
+    // 「妙」增益期间：记录本步开始前棋盘上的妙，移动后爱心跟着妙的新位置生成
+    const heartIds = state.buffs.some((buff) => buff.id === 'miao')
+      ? state.cells
+          .filter((tile): tile is NonNullable<typeof tile> => tile?.variant === 'miao')
+          .map((tile) => tile.id)
+      : [];
     const before = cloneState(state);
     const mult = buffMultiplier(state.buffs);
     const result = applyMove(state, dir, config, rng);
@@ -491,14 +498,41 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     hud.renderBuffs(state.buffs);
     save();
 
+    // 妙移动到哪儿，爱心就在哪儿生成（若这步把妙合掉了，就落在合成后的格子）
+    const heartCells = heartCellsAfterMove(heartIds, result);
     moveTimer = later(w, () => {
       moveTimer = null;
-      finishMove(result, mult, dir);
+      finishMove(result, mult, dir, heartCells);
       settle();
     }, SLIDE_MS);
   }
 
-  function finishMove(result: MoveResult, mult: number, dir: Direction): void {
+  /** 本步开始前那些「妙」方块移动/合并后落在哪些格子 */
+  function heartCellsAfterMove(ids: readonly number[], result: MoveResult): number[] {
+    const cells = new Set<number>();
+    for (const id of ids) {
+      const slide = result.slides.find((item) => item.id === id);
+      if (slide) {
+        cells.add(slide.to);
+        continue;
+      }
+      const merge = result.merges.find((item) => item.sources.includes(id));
+      if (merge) {
+        cells.add(merge.cell);
+        continue;
+      }
+      const index = result.state.cells.findIndex((tile) => tile?.id === id);
+      if (index >= 0) cells.add(index);
+    }
+    return [...cells];
+  }
+
+  function finishMove(
+    result: MoveResult,
+    mult: number,
+    dir: Direction,
+    heartCells: readonly number[],
+  ): void {
     // 音效钩子：特殊产物 > 通关 > 普通合成 > 普通移动（附带方向 / 合并数 / 得分 / 产物）
     const specials = result.merges.filter((merge) => specialProduct(merge.variant));
     const cue = result.justTrueWon
@@ -522,6 +556,8 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
 
     board.pop(result.merges, mult);
     if (result.spawn) board.spawnTile(result.spawn);
+    // 妙增益期间：爱心从妙所在格生成，跟随妙移动（纯表现，不影响规则）
+    if (heartCells.length > 0) board.heartBurst(heartCells);
     hud.setUndoEnabled(history.length > 0);
 
     // 收集：随机抽取 + 特殊产物（都跨局累积，撤销不回退）
@@ -549,9 +585,10 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     else hud.announce(`得分 ${state.score}`);
 
     // 弹层优先级：真通关 > 假通关 > 首次收录解释 > 结束
+    // 「隋」「李娜」没有解释文案（v2.4 用户要求去掉）：首次收录不弹解释卡，只播报收录结果
     if (result.justTrueWon) openTrueWin();
     else if (result.justWon) openFakeWin();
-    else if (firstNew) openLore(firstNew);
+    else if (firstNew && loreOf(firstNew.id).length > 0) openLore(firstNew);
     else if (state.over) openGameOver();
   }
 
@@ -658,6 +695,8 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     sheet.open('chain');
   }
   function onAbout(): void {
+    // 「关于」入口在图鉴抽屉底部：先收起抽屉，再在它上面弹说明层
+    if (sheet.isOpen()) sheet.close();
     overlay.show(buildAbout());
   }
   function onSound(): void {
