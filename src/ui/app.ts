@@ -562,17 +562,21 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     dir: Direction,
     heartCells: readonly number[],
   ): void {
+    // 本步结束后已经无路可走：本步只播失败音效，不再让合成猫叫叠上来
+    const overNow = state.over;
     // 音效钩子：特殊产物 > 通关 > 普通合成 > 普通移动（附带方向 / 合并数 / 得分 / 产物）
     const specials = result.merges.filter((merge) => specialProduct(merge.variant));
-    const cue = result.justTrueWon
-      ? 'truewin'
-      : result.justWon
-        ? 'win'
-        : specials.length > 0
-          ? 'special'
-          : result.merges.length > 0
-            ? 'merge'
-            : 'move';
+    const cue = overNow
+      ? 'move'
+      : result.justTrueWon
+        ? 'truewin'
+        : result.justWon
+          ? 'win'
+          : specials.length > 0
+            ? 'special'
+            : result.merges.length > 0
+              ? 'merge'
+              : 'move';
     audio.play({
       cue,
       direction: dir,
@@ -617,7 +621,6 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     // 「隋」「李娜」没有解释文案（v2.4 用户要求去掉）：首次收录不弹解释卡，只播报收录结果
     // 结束层优先级最低，但必须补弹：本步同时触发解释卡 / 通关层时，先记下 over，
     // 等这些弹层关闭后再由 onClose 补上「无处可合」，否则失败判定会被吞掉。
-    const overNow = state.over;
     if (result.justTrueWon) openTrueWin(overNow);
     else if (result.justWon) openFakeWin(overNow);
     else if (firstNew && loreOf(firstNew.id).length > 0) openLore(firstNew, overNow);

@@ -76,6 +76,12 @@ function clampVolume(value: number): number {
 
 type AudioContextCtor = new () => AudioContext;
 
+/** 正在播放的一段音效：停音时先把增益归零再 stop，避免爆音 */
+interface Voice {
+  source: AudioBufferSourceNode;
+  envelope: GainNode;
+}
+
 function audioCtorOf(w: Window | null): AudioContextCtor | null {
   if (!w) return null;
   const win = w as Window & {
@@ -128,6 +134,10 @@ export function createAudio(options: AudioOptions): AudioEngine {
   let overSfx: AudioBuffer | null = null;
   let decodingMerge = false;
   let decodingOver = false;
+  /** 正在响的合成猫叫（可叠加，失败音效出现时全部停掉） */
+  const mergeVoices = new Set<Voice>();
+  /** 正在响的失败音效（新的合成音效开始时停掉） */
+  let overVoice: Voice | null = null;
 
   function decodeSfx(): void {
     if (!ctx || !w) return;
@@ -181,10 +191,45 @@ export function createAudio(options: AudioOptions): AudioEngine {
     return ctx;
   }
 
-  function playBuffer(buffer: AudioBuffer | null, rate: number, gain: number): void {
+  /** 立刻静音并停掉一段音效（先归零增益再 stop，避免爆音） */
+  function silence(voice: Voice): void {
+    try {
+      voice.envelope.gain.value = 0;
+    } catch {
+      /* 节点已经断开也继续 stop */
+    }
+    try {
+      voice.source.stop();
+    } catch {
+      /* 已经停过就算了 */
+    }
+  }
+
+  function stopMergeVoices(): void {
+    for (const voice of mergeVoices) silence(voice);
+    mergeVoices.clear();
+  }
+
+  function stopOverVoice(): void {
+    if (!overVoice) return;
+    silence(overVoice);
+    overVoice = null;
+  }
+
+  /**
+   * kind=merge：合成类音效，可以多段叠加（快速连续合成），但会把失败音效的尾音停掉；
+   * kind=over：失败音效，出现时**先把还在响的猫叫全部静音**，保证两段声音不会同时播。
+   */
+  function playSfx(buffer: AudioBuffer | null, rate: number, gain: number, kind: 'merge' | 'over'): void {
     const context = ensureContext();
     if (!context || !master || !buffer) return;
     try {
+      if (kind === 'over') {
+        stopMergeVoices();
+        stopOverVoice();
+      } else {
+        stopOverVoice();
+      }
       const source = context.createBufferSource();
       source.buffer = buffer;
       source.playbackRate.value = rate;
@@ -192,6 +237,13 @@ export function createAudio(options: AudioOptions): AudioEngine {
       envelope.gain.value = Math.max(0, Math.min(1, gain));
       source.connect(envelope);
       envelope.connect(master);
+      const voice: Voice = { source, envelope };
+      source.onended = () => {
+        mergeVoices.delete(voice);
+        if (overVoice === voice) overVoice = null;
+      };
+      if (kind === 'over') overVoice = voice;
+      else mergeVoices.add(voice);
       source.start();
     } catch {
       /* 音频播放失败不影响游戏 */
@@ -211,21 +263,21 @@ export function createAudio(options: AudioOptions): AudioEngine {
     switch (cue) {
       // 普通合成：原声
       case 'merge':
-        playBuffer(mergeSfx, 1, 0.85);
+        playSfx(mergeSfx, 1, 0.85, 'merge');
         break;
       // 特殊合成：升半音多一点，听得出「这次不一样」
       case 'special':
-        playBuffer(mergeSfx, 1.12, 1);
+        playSfx(mergeSfx, 1.12, 1, 'merge');
         break;
       case 'win':
-        playBuffer(mergeSfx, 1.22, 1);
+        playSfx(mergeSfx, 1.22, 1, 'merge');
         break;
       case 'truewin':
-        playBuffer(mergeSfx, 1.32, 1);
+        playSfx(mergeSfx, 1.32, 1, 'merge');
         break;
-      // 本局失败：独立的失败音源，不升调
+      // 本局失败：独立的失败音源，不升调，音量拉满（音源本身归一化到 -14 LUFS）
       case 'over':
-        playBuffer(overSfx, 1, 0.9);
+        playSfx(overSfx, 1, 1, 'over');
         break;
       // move / invalid / undo / restart / collect / start 不发声
       default:
@@ -278,6 +330,8 @@ export function createAudio(options: AudioOptions): AudioEngine {
       destroyed = true;
       music = false;
       unlocked = false;
+      stopMergeVoices();
+      stopOverVoice();
       mergeSfx = null;
       overSfx = null;
       master = null;

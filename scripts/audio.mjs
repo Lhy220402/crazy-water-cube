@@ -59,12 +59,13 @@ const PRESETS = {
         'highpass=f=70',
         'lowpass=f=14000',
         'afftdn=nr=14:nf=-42:tn=1',
-        'loudnorm=I=-18:TP=-1.5:LRA=11',
+        // 失败音效要比合成猫叫更突出：归一化到 -14 LUFS（比合成音效的 -18 响约 4 dB）
+        'loudnorm=I=-14:TP=-1.0:LRA=11',
         'afade=t=in:st=0:d=0.02',
         `afade=t=out:st=${Math.max(0, clip - 0.12).toFixed(3)}:d=0.12`,
       ].join(','),
     processing:
-      '已用 ffmpeg 去掉开头静音、高通 70Hz + 低通 14kHz、降噪（afftdn）、响度归一化，转成单声道 mp3。',
+      '已用 ffmpeg 去掉开头静音、高通 70Hz + 低通 14kHz、降噪（afftdn）、响度归一化到 -14 LUFS（比合成音效更响），转成单声道 mp3。',
   },
 };
 

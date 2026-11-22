@@ -6,7 +6,8 @@ import type { KV } from '../src/ui/storage.ts';
 /**
  * 音频引擎单元测试：
  *  - jsdom / 旧浏览器没有 AudioContext 时必须安全降级（游戏不能因此报错）
- *  - 有 AudioContext 时，合成类 cue 与失败 cue 播放各自音源，且受 enabled / unlock 控制
+ *  - 有 AudioContext 时，合成 cue 与失败 cue 播放各自音源，且受 enabled / unlock 控制
+ *  - 失败音效出现时停掉还在响的合成猫叫，二者不同时播放
  * 用结构相同的假 AudioContext 跑真实播放路径，不依赖浏览器。
  */
 test('音频引擎：没有 AudioContext 时全部安全降级', () => {
@@ -31,22 +32,49 @@ test('音频引擎：没有 AudioContext 时全部安全降级', () => {
   assert.equal(audio.musicPlaying, false);
 });
 
-test('音频引擎：合成 cue 与失败 cue 各播各的音源，enabled=false 静音', () => {
+test('音频引擎：合成 cue 与失败 cue 各播各的音源，失败时不与猫叫叠音', () => {
   let created = 0;
   let started = 0;
   let decoded = 0;
   const startedDurations: number[] = [];
-  const gain = () => ({ gain: { value: 0 }, connect() {} });
-  const source = () => ({
-    buffer: null as unknown,
-    playbackRate: { value: 1 },
-    connect() {},
-    start() {
-      started += 1;
-      startedDurations.push((this.buffer as { duration?: number } | null)?.duration ?? -1);
-    },
-    stop() {},
-  });
+  interface FakeEnvelope {
+    gain: { value: number };
+    connect(): void;
+  }
+  interface FakeSource {
+    buffer: { duration?: number } | null;
+    playbackRate: { value: number };
+    onended: (() => void) | null;
+    connect(): void;
+    start(): void;
+    stop(): void;
+    stopped: boolean;
+  }
+  const envelopes: FakeEnvelope[] = [];
+  const sources: FakeSource[] = [];
+  const makeGain = (): FakeEnvelope => {
+    const envelope: FakeEnvelope = { gain: { value: 0 }, connect() {} };
+    envelopes.push(envelope);
+    return envelope;
+  };
+  const makeSource = (): FakeSource => {
+    const source: FakeSource = {
+      buffer: null,
+      playbackRate: { value: 1 },
+      onended: null,
+      connect() {},
+      start() {
+        started += 1;
+        startedDurations.push((this.buffer as { duration?: number } | null)?.duration ?? -1);
+      },
+      stop() {
+        this.stopped = true;
+      },
+      stopped: false,
+    };
+    sources.push(source);
+    return source;
+  };
   class FakeAudioContext {
     state = 'running';
     destination = {};
@@ -54,10 +82,10 @@ test('音频引擎：合成 cue 与失败 cue 各播各的音源，enabled=false
       created += 1;
     }
     createGain() {
-      return gain();
+      return makeGain();
     }
     createBufferSource() {
-      return source();
+      return makeSource();
     }
     decodeAudioData(_buffer: ArrayBuffer, ok: (buffer: unknown) => void, _bad?: (error: unknown) => void) {
       // 同步回调，模拟解码完成；用递增 duration 区分合成 / 失败两段音源
@@ -99,9 +127,21 @@ test('音频引擎：合成 cue 与失败 cue 各播各的音源，enabled=false
   assert.equal(started, 3);
   audio.play('truewin');
   assert.equal(started, 4);
+  assert.deepEqual(
+    sources.map((source) => source.stopped),
+    [false, false, false, false],
+    '合成音效之间可以叠加，失败音效出现前不应被停掉',
+  );
+
   audio.play('over');
   assert.equal(started, 5, '本局结束播放一次失败音效');
   assert.equal(startedDurations.at(-1), 2, '失败 cue 应使用独立的失败音源');
+  assert.deepEqual(
+    sources.map((source) => source.stopped),
+    [true, true, true, true, false],
+    '失败音效出现时应先停掉还在响的合成猫叫，二者不同时播放',
+  );
+  assert.equal(envelopes.at(-1)!.gain.value, 1, '失败音效音量应拉满');
 
   audio.setEnabled(false);
   audio.play('merge');
@@ -111,6 +151,8 @@ test('音频引擎：合成 cue 与失败 cue 各播各的音源，enabled=false
   audio.play({ cue: 'merge', merges: 1, gained: 8 });
   assert.equal(started, 6);
   assert.equal(startedDurations.at(-1), 1, '合成 cue 仍使用合成音源');
+  assert.equal(sources.at(-2)!.stopped, true, '新的合成音效开始时应停掉失败音效的尾音');
+  assert.equal(envelopes.at(-1)!.gain.value, 0.85, '普通合成音量保持原样');
 
   audio.destroy();
 });
