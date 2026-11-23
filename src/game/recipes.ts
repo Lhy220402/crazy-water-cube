@@ -25,6 +25,12 @@ export interface SpecialProduct {
   readonly buff: BuffDef;
   /** 触发真通关 */
   readonly trueWin?: boolean;
+  /**
+   * 合成链页里，这条配方要等某个隐藏产物首次触发后才显示。
+   * 用于「记赢赢 + 会成 → 记会成」：记赢赢本身是真通关隐藏内容，
+   * 提前显示这一行会泄露记赢赢的名字与来源。
+   */
+  readonly revealAfter?: string;
 }
 
 /** 配方的一侧：按等级匹配，或按词条 id 匹配 */
@@ -75,6 +81,14 @@ export const PRODUCTS: Readonly<Record<string, SpecialProduct>> = {
     points: 128,
     buff: { id: 'miao', label: '妙·藏庙', mult: 2, moves: 10 },
   },
+  // 记赢赢 + 会成 → 记会成（v2.5）：真通关之后的隐藏延伸，+256 / ×2 / 10 步；
+  // 记赢赢本身是隐藏内容，合成链行要等它首次触发后才显示，避免提前剧透。
+  'ji-hui-cheng': {
+    entry: { id: 'ji-hui-cheng', name: '记会成', rarity: 'legend', kind: 'special', hue: 288, hue2: 308 },
+    points: 256,
+    buff: { id: 'ji-hui-cheng', label: '记会成·必成', mult: 2, moves: 10 },
+    revealAfter: 'ji-ying-ying',
+  },
 };
 
 export const RECIPES: readonly Recipe[] = [
@@ -84,6 +98,7 @@ export const RECIPES: readonly Recipe[] = [
   { a: { variant: 'li' }, b: { variant: 'na' }, product: 'lina' },
   { a: { variant: 'biao' }, b: { rank: 2 }, product: 'miao' },
   { a: { variant: 'ji' }, b: { rank: 1 }, product: 'ji-ying-ying' },
+  { a: { variant: 'ji-ying-ying' }, b: { variant: 'huicheng' }, product: 'ji-hui-cheng' },
 ];
 
 /** 引擎用的最小方块形状（与 engine.Tile 结构兼容，避免循环依赖） */

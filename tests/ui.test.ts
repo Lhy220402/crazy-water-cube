@@ -148,12 +148,13 @@ function saved(
 
 const EMPTY16: (number | null)[] = new Array(16).fill(null);
 
-/** 图鉴 32 条全收录（随机池 26 + 特殊产物 6），用于测进度条与「未完待续」 */
+/** 图鉴 36 条全收录（随机池 29 + 特殊产物 7），用于测进度条与「未完待续」 */
 const ALL_CODEX_IDS = [
   'sui', 'eyu-qi', 'sui-ring', 'eyu-shi-jun', 'ji', 'bayi', 'hongmei', 'jinshan', 'fuli',
   'li', 'na', 'xiaoming', 'yanzi', 'doubao', 'biao', 'huicheng', 'xiaoyu', 'gang', 'weihai',
   'dingjian', 'junzhu', 'chenglong', 'batian', 'neng', 'zhaoyiming', 'sudailiao',
-  'sui-jun', 'sui-jun-ring', 'shui-gang', 'lina', 'ji-ying-ying', 'miao',
+  'zuolun', 'yu-zi', 'he-si',
+  'sui-jun', 'sui-jun-ring', 'shui-gang', 'lina', 'ji-ying-ying', 'miao', 'ji-hui-cheng',
 ];
 const ALL_CODEX: Record<string, number> = Object.fromEntries(ALL_CODEX_IDS.map((id) => [id, 1]));
 
@@ -323,9 +324,9 @@ test('隋 + 军 → 水军（原隋军）：特殊收录 + 解释弹层 + ×2/8�
 });
 
 test('首次抽到词条：弹解释卡、写入图鉴，名字此刻才可见', async () => {
-  // 固定随机：rng=0.5 落在「燕子」（权重总和 55 → 27.5）
+  // 固定随机：rng=0.45 落在「燕子」（权重总和 61 → 27.45）
   const h = await boot(saved([4, 4, ...EMPTY16.slice(2)], { won: true }), undefined, undefined, {
-    rng: () => 0.5,
+    rng: () => 0.45,
   });
   h.app.move('left');
   await settle(h);
@@ -353,14 +354,14 @@ test('首次抽到词条：弹解释卡、写入图鉴，名字此刻才可见',
 
 test('重复抽到已收录词条不重复弹解释层', async () => {
   const h = await boot(saved([4, 4, ...EMPTY16.slice(2)], { won: true }), ALL_CODEX);
-  assert.equal(Object.keys(h.app.codex).length, 32, '读档应恢复全部收录（含特殊产物）');
+  assert.equal(Object.keys(h.app.codex).length, 36, '读档应恢复全部收录（含特殊产物）');
   h.app.move('left');
   await settle(h);
   await sleep(120);
   assert.equal(h.$('#overlay').hidden, true, '重复词条不弹解释层');
   const counts = Object.values(h.app.codex).reduce((sum, n) => sum + n, 0);
-  assert.equal(counts, 33, '重复抽到也要累加出现次数');
-  assert.equal(Object.keys(h.app.codex).length, 32);
+  assert.equal(counts, 37, '重复抽到也要累加出现次数');
+  assert.equal(Object.keys(h.app.codex).length, 36);
   h.close();
 });
 
@@ -403,7 +404,11 @@ test('图鉴词条页：没收集前完全空白、不剧透名字和数量', as
     '霸天',
     '赵一鸣',
     '塑料袋',
+    '左轮',
+    '鱼籽',
+    '何思',
     '妙',
+    '记会成',
   ]) {
     assert.equal(text.includes(name), false, `不能剧透「${name}」`);
   }
@@ -448,6 +453,8 @@ test('图鉴合成链页：固定链 + 词条入口 + 特殊配方（产物未�
   assert.equal(text.includes('水军'), false, '特殊产物未触发前不剧透');
   assert.equal(text.includes('记'), false, '真通关配方行首次触发前完全隐藏');
   assert.equal(text.includes('记赢赢'), false);
+  assert.equal(text.includes('记会成'), false, '依赖记赢赢的延伸配方行也要隐藏');
+  assert.equal(text.includes('会成'), false);
   assert.equal(h.$('#sheet-sub').textContent?.includes('随机抽一条词条'), true);
   h.$('#sheet-close').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
   await sleep(SHEET + 60);
@@ -500,15 +507,28 @@ test('特殊产物触发后，合成链页揭示产物与增益；真通关配�
   assert.equal(hm.$('#chain').querySelectorAll('.mini--mystery').length, 5);
   hm.close();
 
-  // 真通关触发之后才揭示整行配方
+  // 真通关触发之后才揭示整行配方；依赖它的「记赢赢 + 会成」也随之出现
   const h2 = await boot(undefined, { 'ji-ying-ying': 1 });
   h2.app.openGuide('chain');
   await sleep(30);
   const text2 = h2.$('#chain').textContent ?? '';
   assert.ok(text2.includes('记赢赢'), '真通关后应揭示记赢赢');
   assert.match(text2, /真通关/);
-  assert.equal(h2.$('#chain').querySelectorAll('.chain__row').length, 11);
+  assert.ok(text2.includes('会成'), '真通关后应揭示延伸配方的另一半材料');
+  assert.equal(text2.includes('记会成'), false, '记会成未触发前产物名仍打码');
+  assert.equal(h2.$('#chain').querySelectorAll('.chain__row').length, 12);
+  assert.equal(h2.$('#chain').querySelectorAll('.mini--mystery').length, 7);
   h2.close();
+
+  // 记会成也触发后，延伸配方行显示产物名与增益
+  const h3 = await boot(undefined, { 'ji-ying-ying': 1, 'ji-hui-cheng': 1 });
+  h3.app.openGuide('chain');
+  await sleep(30);
+  const text3 = h3.$('#chain').textContent ?? '';
+  assert.ok(text3.includes('记会成'), '记会成触发后应揭示名字');
+  assert.match(text3, /×2\/10步/);
+  assert.equal(h3.$('#chain').querySelectorAll('.chain__row').length, 12);
+  h3.close();
 });
 
 test('图鉴收录跨局累积，重新开局不清空，撤销不回退', async () => {
@@ -631,8 +651,8 @@ test('最后一步同时首次收录时，解释卡关闭后仍会补弹结束�
     won: true,
     moves: 42,
   });
-  // rng：抽到燕子（0.5）、空格只有一个不消耗位置、生成军（0）
-  const sequence = [0.5, 0, 0];
+  // rng：抽到燕子（0.45）、空格只有一个不消耗位置、生成军（0）
+  const sequence = [0.45, 0, 0];
   let index = 0;
   const rng = (): number => sequence[Math.min(index++, sequence.length - 1)]!;
   const h = await boot(board, {}, undefined, { rng });
@@ -703,15 +723,15 @@ test('关于：简介 + Gitee/GitHub 两个仓库链接，入口在图鉴抽屉�
   assert.equal(aboutText.includes('赢²'), false, '关于不泄露真通关配方');
   const links = h.$('#overlay-actions').querySelectorAll('a.pill');
   assert.equal(links.length, 2, 'v2.4 去掉在线玩，只留两个仓库');
-  assert.match(links[0]!.getAttribute('href') ?? '', /gitee\.com/);
-  assert.match(links[1]!.getAttribute('href') ?? '', /github\.com/);
+  assert.match(links[0]!.getAttribute('href') ?? '', /gitee\.com\/idealismo10\/crazy-water-cube/);
+  assert.match(links[1]!.getAttribute('href') ?? '', /github\.com\/idealismo10\/crazy-water-cube/);
   assert.equal(
     (h.$('#overlay-actions').textContent ?? '').includes('在线玩'),
     false,
     '不应再出现在线玩按钮',
   );
   assert.equal(
-    (h.$('#overlay-actions').innerHTML).includes('lhy220402.github.io'),
+    (h.$('#overlay-actions').innerHTML).includes('github.io'),
     false,
     '不应再出现 Pages 链接',
   );
@@ -1030,6 +1050,35 @@ test('v2.3 新增词条：钢 / 威海 / 钉剑 / 君竹 的角标、色相与 +
   h.close();
 });
 
+test('v2.5 新增词条：左轮 / 鱼籽 / 何思 的稀有角标与色相', async () => {
+  const variants = ['zuolun', 'yu-zi', 'he-si', null, ...EMPTY16.slice(4).map(() => null)];
+  const h = await boot(
+    saved([5, 5, 5, null, ...EMPTY16.slice(4)], { variants, won: true }),
+    { zuolun: 1, 'yu-zi': 1, 'he-si': 1 },
+  );
+  const zuolun = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="zuolun"]');
+  assert.ok(zuolun, '棋盘上应有左轮');
+  assert.equal(zuolun.querySelector('.tile__label--codex')?.textContent, '左轮');
+  assert.equal(zuolun.querySelector('.tile__rarity')?.textContent, '稀');
+  assert.equal(zuolun.style.getPropertyValue('--hue'), '218');
+  const yuZi = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="yu-zi"]');
+  assert.ok(yuZi, '棋盘上应有鱼籽');
+  assert.equal(yuZi.querySelector('.tile__label--codex')?.textContent, '鱼籽');
+  assert.equal(yuZi.style.getPropertyValue('--hue'), '16');
+  const heSi = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="he-si"]');
+  assert.ok(heSi, '棋盘上应有何思');
+  assert.equal(heSi.querySelector('.tile__label--codex')?.textContent, '何思');
+  assert.equal(heSi.style.getPropertyValue('--hue'), '248');
+
+  // 图鉴卡片文案按用户原文
+  h.app.openGuide('codex');
+  await sleep(30);
+  const card = h.$('#codex').querySelector<HTMLElement>('.card[data-entry="yu-zi"]');
+  assert.ok(card, '图鉴里应有鱼籽卡片');
+  assert.equal(card.querySelector('.card__desc')?.textContent, '似乎很适合做酱');
+  h.close();
+});
+
 test('隋 + 钢 → 水缸：特殊收录 + 解释弹层 + ×2/8步 增益', async () => {
   const h = await boot(
     saved([5, 5, ...EMPTY16.slice(2)], {
@@ -1169,6 +1218,34 @@ test('彪 + 水³ → 妙：传说收录、+128、×2/10步、解释卡、爱心
   h.close();
 });
 
+test('记赢赢 + 会成 → 记会成：传说收录、+256、×2/10步、解释卡', async () => {
+  const h = await boot(
+    saved([5, 5, ...EMPTY16.slice(2)], {
+      variants: ['ji-ying-ying', 'huicheng', ...EMPTY16.slice(2).map(() => null)],
+      won: true,
+      trueWon: true,
+    }),
+    { 'ji-ying-ying': 1 },
+  );
+  h.app.move('left');
+  await settle(h);
+  await sleep(80);
+  assert.equal(h.app.state.score, 256);
+  const tile = h.$('#tiles').querySelector('.tile[data-entry="ji-hui-cheng"]');
+  assert.ok(tile, '棋盘上应有记会成方块');
+  assert.equal(tile.getAttribute('data-special'), '1');
+  assert.equal(h.app.codex['ji-hui-cheng'], 1);
+  assert.equal(h.app.state.trueWon, true);
+  assert.match(h.$('#buffs').textContent ?? '', /×2/);
+  assert.match(h.$('#buffs').textContent ?? '', /10步/);
+  assert.equal(h.$('#overlay').hidden, false);
+  assert.match(h.$('#overlay-eyebrow').textContent ?? '', /特殊合成/);
+  assert.equal(h.$('#overlay-title').textContent, '记会成');
+  assert.equal(h.$('#overlay-text').textContent, '记了就会成');
+  assert.match(h.$('#overlay-stats').textContent ?? '', /×2 · 10步/);
+  h.close();
+});
+
 test('隋 / 李娜没有解释：首次收录不弹解释卡，图鉴卡片不显示说明', async () => {
   // rng=0 会抽到权重最高的「隋」
   const h = await boot(saved([4, 4, ...EMPTY16.slice(2)], { won: true }), undefined, undefined, {
@@ -1189,7 +1266,7 @@ test('隋 / 李娜没有解释：首次收录不弹解释卡，图鉴卡片不�
 });
 
 test('图鉴收集进度条：未集齐只给比例，集齐后显示总数 + 未完待续', async () => {
-  // 部分收录：进度条 1/32 ≈ 3%，但不显示 x/y 总数
+  // 部分收录：进度条 1/36 ≈ 3%，但不显示 x/y 总数
   const partial = await boot(undefined, { sui: 1 });
   partial.app.openGuide('codex');
   await sleep(30);
@@ -1198,21 +1275,21 @@ test('图鉴收集进度条：未集齐只给比例，集齐后显示总数 + �
   assert.equal(bar.getAttribute('aria-valuenow'), '1');
   assert.equal(partial.$('#codex').querySelector<HTMLElement>('.codex__bar-fill')?.style.width, '3%');
   const partialText = partial.$('#codex').textContent ?? '';
-  assert.equal(partialText.includes('32'), false, '未集齐时不显示总数');
+  assert.equal(partialText.includes('36'), false, '未集齐时不显示总数');
   assert.equal(/\d+\s*\/\s*\d+/.test(partialText), false);
   assert.equal(partial.$('#codex').querySelectorAll('.card').length, 1);
   partial.close();
 
-  // 全部收录：进度条满、标题显示共 32 条、底部「未完待续」
+  // 全部收录：进度条满、标题显示共 36 条、底部「未完待续」
   const full = await boot(undefined, ALL_CODEX);
   full.app.openGuide('codex');
   await sleep(30);
   const fill = full.$('#codex').querySelector<HTMLElement>('.codex__bar-fill');
   assert.equal(fill?.style.width, '100%');
   const fullText = full.$('#codex').textContent ?? '';
-  assert.match(fullText, /全部收录 · 共 32 条/);
+  assert.match(fullText, /全部收录 · 共 36 条/);
   assert.match(fullText, /未完待续/);
-  assert.equal(full.$('#codex').querySelectorAll('.card').length, 32);
+  assert.equal(full.$('#codex').querySelectorAll('.card').length, 36);
   assert.equal(full.$('#codex').querySelectorAll('.mystery').length, 0);
   full.close();
 });

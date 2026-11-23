@@ -18,9 +18,9 @@ import { fileURLToPath } from 'node:url';
 import { buildOnce } from './build.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const repoUrl = process.env.PAGES_REPO ?? 'git@github.com:Lhy220402/crazy-water-cube.git';
+const repoUrl = process.env.PAGES_REPO ?? 'git@github.com:idealismo10/crazy-water-cube.git';
 const branch = process.env.PAGES_BRANCH ?? 'gh-pages';
-const siteUrl = process.env.PAGES_URL ?? 'https://lhy220402.github.io/crazy-water-cube/';
+const siteUrl = process.env.PAGES_URL ?? 'https://idealismo10.github.io/crazy-water-cube/';
 const pkg = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8'));
 
 await buildOnce({ quiet: false });

@@ -38,12 +38,17 @@ export const LORE: Readonly<Record<string, string>> = {
   neng: '大黑能是谁',
   zhaoyiming: '好想来购物袋怎么说',
   sudailiao: '赵一鸣他家怎么说',
+  // v2.5 新增 3 条（用户原文）
+  zuolun: '很优秀的武器',
+  'yu-zi': '似乎很适合做酱',
+  'he-si': '牛何之？',
   // 特殊合成产物
   'sui-jun': '水里的军队',
   'sui-jun-ring': '666 一家齐上了',
   'shui-gang': '一种容器',
   'ji-ying-ying': '记才会赢！',
   miao: '庄宗受而藏之于庙',
+  'ji-hui-cheng': '记了就会成',
   // 隋 / 李娜：用户要求去掉解释，故不写 key（loreOf 返回空串）
 };
 

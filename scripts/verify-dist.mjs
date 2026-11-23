@@ -60,13 +60,22 @@ check(
   html.includes('codex__bar') && html.includes('未完待续'),
   '缺少图鉴收集进度条 / 未完待续',
 );
+// v2.5：左轮 / 鱼籽 / 何思 + 记赢赢 + 会成 → 记会成（隐藏延伸配方）
+check(
+  html.includes('左轮') && html.includes('鱼籽') && html.includes('何思'),
+  '缺少 v2.5 新增词条（左轮 / 鱼籽 / 何思）',
+);
+check(
+  html.includes('记会成') && html.includes('记了就会成'),
+  '缺少 v2.5 的「记赢赢 + 会成 → 记会成」配方文案',
+);
 check(
   html.includes('tile__aura') && html.includes('heart-rise'),
   '缺少稀有度光效 / 爱心粒子',
 );
 check(html.includes('版本已更新') && html.includes('.version'), '缺少版本更新弹窗（jun2048.version）');
 // v2.4：关于里不再有在线玩按钮（GitHub Pages 已经是对外的正式入口）
-check(!html.includes('lhy220402.github.io'), '关于里不应再有 GitHub Pages 在线玩链接');
+check(!html.includes('github.io'), '关于里不应再有 GitHub Pages 在线玩链接');
 check(html.includes('id="intro"') && html.includes('id="intro-start"'), '缺少开场界面');
 check(html.includes('id="btn-sound"'), '缺少声音开关');
 // favicon：三滴水滴正三角，SVG 主 + PNG 兜底，都必须是 data URI（无外部图标）

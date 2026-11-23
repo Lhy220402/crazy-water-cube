@@ -18,7 +18,7 @@
  *   hue    方块/卡片渐变的主色相（0-360）；不写则按池子顺序自动分配
  *   hue2   渐变的第二色相；不写则主色相 +34，保证同一色系的两条词条也能区分
  *
- * 特殊合成产物（水军 / 隋军隋圆 / 水缸 / 记赢赢 / 李娜 / 妙）不在抽取池里，见 recipes.ts。
+ * 特殊合成产物（水军 / 隋军隋圆 / 水缸 / 记赢赢 / 李娜 / 妙 / 记会成）不在抽取池里，见 recipes.ts。
  */
 
 export type RarityId = 'common' | 'rare' | 'legend';
@@ -64,7 +64,7 @@ export interface CodexEntry {
 }
 
 /**
- * 随机词条池（26 条）。
+ * 随机词条池（29 条）。
  *
  * v2.4 配色原则：
  *   - 只取「水」的色域：湖蓝 / 青灰 / 雾蓝 / 靛蓝为主，局部用低饱和的梅粉、赭红、香槟金做语义点缀；
@@ -109,6 +109,11 @@ export const CODEX_ENTRIES: readonly CodexEntry[] = [
   { id: 'neng', name: '能', rarity: 'rare', weight: 2, hue: 170, hue2: 150 }, // 能量青
   { id: 'zhaoyiming', name: '赵一鸣', rarity: 'rare', weight: 2, hue: 38, hue2: 54 }, // 暖沙
   { id: 'sudailiao', name: '塑料袋', rarity: 'rare', weight: 2, hue: 216, hue2: 200 }, // 塑封蓝灰
+
+  // v2.5 新增 3 条
+  { id: 'zuolun', name: '左轮', rarity: 'rare', weight: 2, hue: 218, hue2: 202 }, // 冷钢蓝
+  { id: 'yu-zi', name: '鱼籽', rarity: 'rare', weight: 2, hue: 16, hue2: 30 }, // 鱼籽橙
+  { id: 'he-si', name: '何思', rarity: 'rare', weight: 2, hue: 248, hue2: 232 }, // 雾沉思蓝
 ];
 
 /** 纯文本场景（无障碍、图鉴卡片、解释卡、配方列表）用的名字 */

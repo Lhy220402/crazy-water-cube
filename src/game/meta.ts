@@ -1,9 +1,10 @@
 /**
  * 品牌与「关于」配置 —— 改游戏名、简介、仓库链接，只改这一个文件。
  *
- * 仓库：
- *   Gitee  https://gitee.com/leng-haoyuan/jun2048   显示名「疯狂水立方」
- *   GitHub https://github.com/Lhy220402/crazy-water-cube
+ * 仓库（2026-11-23 用户改了用户名与仓库名，两个平台都迁移到 idealismo10）：
+ *   Gitee  https://gitee.com/idealismo10/crazy-water-cube   显示名「疯狂水立方」
+ *   GitHub https://github.com/idealismo10/crazy-water-cube
+ *   GitHub Pages https://idealismo10.github.io/crazy-water-cube/
  *   （GitHub 不支持中文仓库名，所以 slug 用 crazy-water-cube，中文名写在仓库简介里。）
  *
  * v2.4：玩家发出去的已经是 GitHub Pages 在线版，「关于」里不再放「在线玩」按钮，
@@ -13,7 +14,7 @@
  */
 
 export const GAME_NAME = '疯狂水立方';
-export const GAME_VERSION = '2.4.1';
+export const GAME_VERSION = '2.5.0';
 
 /**
  * 启用「版本更新弹窗」记录（`jun2048.version`）之前的最后一个已发布版本。
@@ -38,6 +39,6 @@ export interface RepoLink {
 
 /** 「关于」里的入口：只保留两个仓库（在线玩已经是 GitHub Pages，不再重复放按钮） */
 export const REPO_LINKS: readonly RepoLink[] = [
-  { label: 'Gitee 仓库', url: 'https://gitee.com/leng-haoyuan/jun2048' },
-  { label: 'GitHub 仓库', url: 'https://github.com/Lhy220402/crazy-water-cube' },
+  { label: 'Gitee 仓库', url: 'https://gitee.com/idealismo10/crazy-water-cube' },
+  { label: 'GitHub 仓库', url: 'https://github.com/idealismo10/crazy-water-cube' },
 ];

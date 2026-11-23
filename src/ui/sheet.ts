@@ -155,6 +155,9 @@ export function createSheet(opts: SheetOptions): SheetView {
         const known = (counts[product.entry.id] ?? 0) > 0;
         // 真通关配方是隐藏内容：首次触发前连配方行都不显示，留给玩家探索
         if (product.trueWin && !known) continue;
+        // 依赖隐藏产物的延伸配方（记赢赢 + 会成）：记赢赢首次触发前也整行隐藏，
+        // 否则会提前泄露真通关产物「记赢赢」这个名字。
+        if (product.revealAfter && (counts[product.revealAfter] ?? 0) === 0) continue;
         const row = el(doc, 'div', 'chain__row chain__row--recipe');
         row.append(recipeMini(recipe.a));
         row.append(el(doc, 'span', 'chain__times', '+'));
