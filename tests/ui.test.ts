@@ -148,13 +148,15 @@ function saved(
 
 const EMPTY16: (number | null)[] = new Array(16).fill(null);
 
-/** 图鉴 36 条全收录（随机池 29 + 特殊产物 7），用于测进度条与「未完待续」 */
+/** 图鉴 48 条全收录（随机池 29 + 特殊产物 7 + 传奇 12），用于测进度条与「未完待续」 */
 const ALL_CODEX_IDS = [
   'sui', 'eyu-qi', 'sui-ring', 'eyu-shi-jun', 'ji', 'bayi', 'hongmei', 'jinshan', 'fuli',
   'li', 'na', 'xiaoming', 'yanzi', 'doubao', 'biao', 'huicheng', 'xiaoyu', 'gang', 'weihai',
   'dingjian', 'junzhu', 'chenglong', 'batian', 'neng', 'zhaoyiming', 'sudailiao',
   'zuolun', 'yu-zi', 'he-si',
   'sui-jun', 'sui-jun-ring', 'shui-gang', 'lina', 'ji-ying-ying', 'miao', 'ji-hui-cheng',
+  'meihui', 'zhaojun', 'xiangjun', 'xiaofeng', 'yingtao', 'jiasheng', '666', 'hongying',
+  'wangxuedi', 'zhongshu', 'guojing', 'chuncheng',
 ];
 const ALL_CODEX: Record<string, number> = Object.fromEntries(ALL_CODEX_IDS.map((id) => [id, 1]));
 
@@ -354,14 +356,14 @@ test('首次抽到词条：弹解释卡、写入图鉴，名字此刻才可见',
 
 test('重复抽到已收录词条不重复弹解释层', async () => {
   const h = await boot(saved([4, 4, ...EMPTY16.slice(2)], { won: true }), ALL_CODEX);
-  assert.equal(Object.keys(h.app.codex).length, 36, '读档应恢复全部收录（含特殊产物）');
+  assert.equal(Object.keys(h.app.codex).length, 48, '读档应恢复全部收录（含特殊产物与传奇）');
   h.app.move('left');
   await settle(h);
   await sleep(120);
   assert.equal(h.$('#overlay').hidden, true, '重复词条不弹解释层');
   const counts = Object.values(h.app.codex).reduce((sum, n) => sum + n, 0);
-  assert.equal(counts, 37, '重复抽到也要累加出现次数');
-  assert.equal(Object.keys(h.app.codex).length, 36);
+  assert.equal(counts, 49, '重复抽到也要累加出现次数');
+  assert.equal(Object.keys(h.app.codex).length, 48);
   h.close();
 });
 
@@ -374,7 +376,8 @@ test('图鉴词条页：没收集前完全空白、不剧透名字和数量', as
   const text = h.$('#codex').textContent ?? '';
   assert.match(text, /图鉴还是空白的/);
   assert.equal(h.$('#codex').querySelectorAll('.card').length, 0);
-  assert.equal(h.$('#codex').querySelectorAll('.mystery').length, 1);
+  assert.equal(h.$('#codex').querySelectorAll('.mystery').length, 2, '普通词条 + 传奇分区各一张问号卡');
+  assert.equal(h.$('#codex').querySelectorAll('.codex__section--myth').length, 1, '传奇应单独分区');
   for (const name of [
     '隋',
     '鳄鱼鳍',
@@ -409,6 +412,18 @@ test('图鉴词条页：没收集前完全空白、不剧透名字和数量', as
     '何思',
     '妙',
     '记会成',
+    '煤灰',
+    '昭君',
+    '象郡',
+    '小风',
+    '🍒',
+    '假生',
+    '666',
+    '红鹰',
+    '王雪地',
+    '种树',
+    '国晶',
+    '春橙',
   ]) {
     assert.equal(text.includes(name), false, `不能剧透「${name}」`);
   }
@@ -507,7 +522,7 @@ test('特殊产物触发后，合成链页揭示产物与增益；真通关配�
   assert.equal(hm.$('#chain').querySelectorAll('.mini--mystery').length, 5);
   hm.close();
 
-  // 真通关触发之后才揭示整行配方；依赖它的「记赢赢 + 会成」也随之出现
+  // 真通关触发之后才揭示整行配方；依赖它的「记赢赢 + 会成」与传奇抽取也随之出现
   const h2 = await boot(undefined, { 'ji-ying-ying': 1 });
   h2.app.openGuide('chain');
   await sleep(30);
@@ -516,8 +531,10 @@ test('特殊产物触发后，合成链页揭示产物与增益；真通关配�
   assert.match(text2, /真通关/);
   assert.ok(text2.includes('会成'), '真通关后应揭示延伸配方的另一半材料');
   assert.equal(text2.includes('记会成'), false, '记会成未触发前产物名仍打码');
-  assert.equal(h2.$('#chain').querySelectorAll('.chain__row').length, 12);
-  assert.equal(h2.$('#chain').querySelectorAll('.mini--mystery').length, 7);
+  assert.match(text2, /传奇 · 相撞即合/, '记赢赢解锁后出现传奇抽取配方');
+  assert.match(text2, /\+512/, '传奇抽取说明应写 +512');
+  assert.equal(h2.$('#chain').querySelectorAll('.chain__row').length, 13);
+  assert.equal(h2.$('#chain').querySelectorAll('.mini--mystery').length, 8);
   h2.close();
 
   // 记会成也触发后，延伸配方行显示产物名与增益
@@ -527,8 +544,33 @@ test('特殊产物触发后，合成链页揭示产物与增益；真通关配�
   const text3 = h3.$('#chain').textContent ?? '';
   assert.ok(text3.includes('记会成'), '记会成触发后应揭示名字');
   assert.match(text3, /×2\/10步/);
-  assert.equal(h3.$('#chain').querySelectorAll('.chain__row').length, 12);
+  assert.equal(h3.$('#chain').querySelectorAll('.chain__row').length, 13);
+  assert.equal(h3.$('#chain').querySelectorAll('.mini--mystery').length, 7);
   h3.close();
+});
+
+test('图鉴合成链页：传奇整节在记赢赢首次收集前完全隐藏', async () => {
+  // 未触发真通关：不出现「记赢赢」「传奇」配方；触发后整节出现
+  const before = await boot();
+  before.app.openGuide('chain');
+  await sleep(30);
+  const beforeText = before.$('#chain').textContent ?? '';
+  assert.equal(beforeText.includes('传奇'), false, '记赢赢解锁前不显示传奇配方');
+  assert.equal(before.$('#chain').querySelectorAll('.chain__row--myth').length, 0);
+  before.close();
+
+  const after = await boot(undefined, { 'ji-ying-ying': 1 });
+  after.app.openGuide('chain');
+  await sleep(30);
+  const afterText = after.$('#chain').textContent ?? '';
+  assert.equal(after.$('#chain').querySelectorAll('.chain__row--myth').length, 1);
+  assert.match(afterText, /传奇词条 · 随机抽取/);
+  assert.match(afterText, /两枚传奇相撞/);
+  // 未收集传奇词条时产物仍是问号 mini，不剧透传奇名字
+  for (const name of ['煤灰', '昭君', '666', '🍒']) {
+    assert.equal(afterText.includes(name), false, `传奇未现世前不能剧透「${name}」`);
+  }
+  after.close();
 });
 
 test('图鉴收录跨局累积，重新开局不清空，撤销不回退', async () => {
@@ -1246,6 +1288,95 @@ test('记赢赢 + 会成 → 记会成：传说收录、+256、×2/10步、解�
   h.close();
 });
 
+test('v3.0 传奇渲染：rank 6、奇角标、金虹光效；记赢赢使用 OLD FIVE 同款金虹', async () => {
+  const ranks = [6, 5, 6, null, ...EMPTY16.slice(4).map(() => null)];
+  const variants = ['meihui', 'ji-ying-ying', 'zhaojun', null, ...EMPTY16.slice(4).map(() => null)];
+  const h = await boot(saved(ranks, { variants, won: true, trueWon: true }));
+  const meihui = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="meihui"]');
+  assert.ok(meihui, '棋盘上应有传奇「煤灰」');
+  assert.equal(meihui.dataset.rank, '6');
+  assert.equal(meihui.querySelector('.tile__label--codex')?.textContent, '煤灰');
+  assert.equal(meihui.querySelector('.tile__rarity')?.textContent, '奇');
+  assert.equal(meihui.querySelector('.tile__rarity')?.getAttribute('data-rarity'), 'myth');
+  assert.ok(meihui.querySelector('.tile__aura--myth'), '传奇应有专属金色光晕');
+  assert.equal(meihui.classList.contains('tile--myth'), true);
+  const zhaojun = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="zhaojun"]');
+  assert.ok(zhaojun);
+  assert.equal(zhaojun.querySelector('.tile__rarity')?.textContent, '奇');
+
+  const jyy = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="ji-ying-ying"]');
+  assert.ok(jyy, '棋盘上应有记赢赢');
+  assert.equal(jyy.dataset.mythic, '1', '记赢赢应使用金虹材质');
+  assert.ok(jyy.querySelector('.tile__aura--myth'), '记赢赢应带金色光晕');
+  assert.equal(jyy.querySelector('.tile__rarity')?.textContent, '特');
+  h.close();
+});
+
+test('记赢赢 × 记赢赢 → 传奇现世：全屏弹层放大词条名、+512、写入图鉴', async () => {
+  const ranks = [null, 5, 5, null, ...EMPTY16.slice(4).map(() => null)];
+  const variants = [null, 'ji-ying-ying', 'ji-ying-ying', null, ...EMPTY16.slice(4).map(() => null)];
+  const h = await boot(
+    saved(ranks, { variants, won: true, trueWon: true, moves: 8 }),
+    { 'ji-ying-ying': 2 },
+    undefined,
+    { rng: () => 0 },
+  );
+  h.app.move('left');
+  await settle(h);
+  await sleep(80);
+  assert.equal(h.app.state.score, 512);
+  assert.equal(h.app.codex['meihui'], 1);
+  const tile = h.$('#tiles').querySelector('.tile[data-entry="meihui"]');
+  assert.ok(tile, '棋盘上应出现传奇方块');
+  assert.equal(tile.getAttribute('data-rank'), '6');
+  // 合成后直接弹出词条名
+  assert.equal(h.$('#overlay').hidden, false, '传奇应弹全屏揭示层');
+  assert.equal(h.$('#overlay').getAttribute('data-kind'), 'myth');
+  assert.equal(h.$('#overlay-title').textContent, '煤灰');
+  assert.equal(h.$('#overlay-title').classList.contains('panel__title--myth'), true);
+  assert.equal(h.$('#overlay-text').textContent, '煤炭的灰');
+  assert.match(h.$('#overlay-eyebrow').textContent ?? '', /传奇/);
+  assert.ok(h.$('#burst').children.length > 0, '传奇应有大礼花');
+  // 关闭后正常继续
+  h.$('#overlay-actions .pill--primary').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(OVERLAY + 60);
+  assert.equal(h.$('#overlay').hidden, true);
+  h.close();
+});
+
+test('图鉴传奇单独分区：传奇卡片与记赢赢金虹卡片，未集齐不显示总数', async () => {
+  const h = await boot(undefined, { meihui: 1, '666': 2, 'ji-ying-ying': 1 });
+  h.app.openGuide('codex');
+  await sleep(30);
+  const section = h.$('#codex').querySelector<HTMLElement>('.codex__section--myth');
+  assert.ok(section, '图鉴应有传奇分区');
+  assert.match(section.textContent ?? '', /传奇/);
+  assert.match(section.textContent ?? '', /最高等级/);
+  const mythCards = section.querySelectorAll('.card');
+  assert.equal(mythCards.length, 2, '已收录的传奇应单独排在本区');
+  const meihui = section.querySelector<HTMLElement>('.card[data-entry="meihui"]');
+  assert.ok(meihui);
+  assert.equal(meihui.dataset.rarity, 'myth');
+  assert.equal(meihui.querySelector('.card__name')?.textContent, '煤灰');
+  assert.match(meihui.querySelector('.card__rarity')?.textContent ?? '', /传奇/);
+  assert.equal(meihui.querySelector('.card__desc')?.textContent, '煤炭的灰');
+  const times = section.querySelector<HTMLElement>('.card[data-entry="666"]');
+  assert.ok(times);
+  assert.equal(times.querySelector('.card__name')?.textContent, '666');
+  assert.match(times.querySelector('.card__times')?.textContent ?? '', /×2/);
+
+  // 记赢赢在普通分区里，但卡片是金虹材质
+  const jyy = h.$('#codex').querySelector<HTMLElement>('.card[data-entry="ji-ying-ying"]');
+  assert.ok(jyy, '记赢赢应正常收录');
+  assert.equal(jyy.dataset.mythic, '1');
+  assert.equal(jyy.querySelector('.card__meta .card__rarity')?.textContent, '特殊合成');
+
+  const text = h.$('#codex').textContent ?? '';
+  assert.equal(text.includes('48'), false, '未集齐时不显示总数');
+  assert.equal(/\d+\s*\/\s*\d+/.test(text), false);
+  h.close();
+});
+
 test('隋 / 李娜没有解释：首次收录不弹解释卡，图鉴卡片不显示说明', async () => {
   // rng=0 会抽到权重最高的「隋」
   const h = await boot(saved([4, 4, ...EMPTY16.slice(2)], { won: true }), undefined, undefined, {
@@ -1266,30 +1397,33 @@ test('隋 / 李娜没有解释：首次收录不弹解释卡，图鉴卡片不�
 });
 
 test('图鉴收集进度条：未集齐只给比例，集齐后显示总数 + 未完待续', async () => {
-  // 部分收录：进度条 1/36 ≈ 3%，但不显示 x/y 总数
+  // 部分收录：进度条 1/48 ≈ 2%，但不显示 x/y 总数
   const partial = await boot(undefined, { sui: 1 });
   partial.app.openGuide('codex');
   await sleep(30);
   const bar = partial.$('#codex').querySelector<HTMLElement>('.codex__bar');
   assert.ok(bar, '应有进度条');
   assert.equal(bar.getAttribute('aria-valuenow'), '1');
-  assert.equal(partial.$('#codex').querySelector<HTMLElement>('.codex__bar-fill')?.style.width, '3%');
+  assert.equal(partial.$('#codex').querySelector<HTMLElement>('.codex__bar-fill')?.style.width, '2%');
   const partialText = partial.$('#codex').textContent ?? '';
-  assert.equal(partialText.includes('36'), false, '未集齐时不显示总数');
+  assert.equal(partialText.includes('48'), false, '未集齐时不显示总数');
   assert.equal(/\d+\s*\/\s*\d+/.test(partialText), false);
   assert.equal(partial.$('#codex').querySelectorAll('.card').length, 1);
+  assert.equal(partial.$('#codex').querySelectorAll('.mystery').length, 2, '普通词条 + 传奇分区各一张问号卡');
   partial.close();
 
-  // 全部收录：进度条满、标题显示共 36 条、底部「未完待续」
+  // 全部收录：进度条满、标题显示共 48 条、底部「未完待续」、传奇单独分区
   const full = await boot(undefined, ALL_CODEX);
   full.app.openGuide('codex');
   await sleep(30);
   const fill = full.$('#codex').querySelector<HTMLElement>('.codex__bar-fill');
   assert.equal(fill?.style.width, '100%');
   const fullText = full.$('#codex').textContent ?? '';
-  assert.match(fullText, /全部收录 · 共 36 条/);
+  assert.match(fullText, /全部收录 · 共 48 条/);
   assert.match(fullText, /未完待续/);
-  assert.equal(full.$('#codex').querySelectorAll('.card').length, 36);
+  assert.match(fullText, /传奇/);
+  assert.equal(full.$('#codex').querySelectorAll('.card').length, 48);
+  assert.equal(full.$('#codex').querySelectorAll('.codex__grid--myth .card').length, 12);
   assert.equal(full.$('#codex').querySelectorAll('.mystery').length, 0);
   full.close();
 });

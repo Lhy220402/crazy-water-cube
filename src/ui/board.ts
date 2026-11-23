@@ -2,7 +2,7 @@
  * 棋盘渲染：方块创建 / 滑动 / 合并弹出 / 生成 / 飘分 / 抖动 / 几何布局。
  * 动画全部由 CSS transform/transition/keyframes 完成，这里只编排 class 与计时。
  */
-import { entryById, isCodexRank, type GameConfig, type Tier } from '../game/config.ts';
+import { entryById, isMythRank, isVariantRank, type GameConfig, type Tier } from '../game/config.ts';
 import { RARITIES, huesOf, type CodexEntry } from '../game/codex.ts';
 import { specialProduct } from '../game/recipes.ts';
 import type { GameState, Merge, Slide, Spawn } from '../game/engine.ts';
@@ -57,7 +57,7 @@ export function createBoard(opts: BoardOptions): BoardView {
     return label;
   }
 
-  /** 词条方块内容：名字（圆环词条显示 tileName）+ 稀有度角标 + 配方提示 + 稀有/传说光效 */
+  /** 词条方块内容：名字（圆环词条显示 tileName）+ 稀有度角标 + 配方提示 + 稀有/传说/传奇光效 */
   function buildCodexContent(entry: CodexEntry | undefined, fallbackId: string): HTMLElement[] {
     const text = entry?.tileName ?? entry?.name ?? fallbackId;
     const width = [...text].length;
@@ -70,9 +70,11 @@ export function createBoard(opts: BoardOptions): BoardView {
     const special = specialProduct(entry?.id);
     const rarity = RARITIES[special ? 'legend' : (entry?.rarity ?? 'legend')];
     const rarityId = special ? 'legend' : (entry?.rarity ?? 'legend');
-    // v2.4 光效：稀有 = 流光扫过，传说 = 呼吸光晕 + 闪点（只在稀有/传说上出现）
-    if (rarityId === 'rare' || rarityId === 'legend') {
-      const aura = el(doc, 'span', `tile__aura tile__aura--${rarityId}`);
+    // 记赢赢的传说材质升级成「金虹」（用 myth 光效），但角标仍是「特」
+    const auraId = entry?.mythic ? 'myth' : rarityId;
+    // v2.4 光效：稀有 = 静态边光，传说 = 呼吸暖光；v3.0 传奇 = 金虹材质 + 专属金色光晕
+    if (auraId === 'rare' || auraId === 'legend' || auraId === 'myth') {
+      const aura = el(doc, 'span', `tile__aura tile__aura--${auraId}`);
       aura.setAttribute('aria-hidden', 'true');
       nodes.push(aura);
     }
@@ -99,7 +101,7 @@ export function createBoard(opts: BoardOptions): BoardView {
 
   function createTile(rank: number, cell: number, extraClass?: string, variant?: string): HTMLElement {
     const tier = config.tiers[rank];
-    const codex = isCodexRank(config, rank);
+    const codex = isVariantRank(config, rank);
     if (!tier && !codex) throw new Error(`未知等级：${rank}`);
     const node = el(doc, 'div', 'tile');
     node.dataset.rank = String(rank);
@@ -108,16 +110,17 @@ export function createBoard(opts: BoardOptions): BoardView {
       entry = variant ? entryById(config, variant) : undefined;
       const special = specialProduct(variant) !== undefined;
       node.dataset.entry = variant ?? '';
-      // 特殊产物统一按「传说」材质 + 金色描边，和普通稀有词条区分
-      node.dataset.rarity = special ? 'legend' : (entry?.rarity ?? 'legend');
+      // 特殊产物按「传说」材质 + 金色描边；传奇（rank 6）有自己的一套金虹材质
+      const rarityId = special ? 'legend' : (entry?.rarity ?? (isMythRank(config, rank) ? 'myth' : 'legend'));
+      node.dataset.rarity = rarityId;
       if (special) node.dataset.special = '1';
+      // 记赢赢（以及未来需要的传说完美级）用 OLD FIVE 同款金虹玻璃
+      if (entry?.mythic) node.dataset.mythic = '1';
       const { hue, hue2 } = huesOf(entry, config.codex?.entries ?? [], variant ?? '');
       node.style.setProperty('--hue', String(hue));
       node.style.setProperty('--hue2', String(hue2));
-      node.style.setProperty(
-        '--rarity',
-        RARITIES[special ? 'legend' : (entry?.rarity ?? 'legend')].color,
-      );
+      node.style.setProperty('--rarity', RARITIES[rarityId].color);
+      if (rarityId === 'myth') node.classList.add('tile--myth');
     }
     node.setAttribute('aria-hidden', 'true');
     if (extraClass) node.classList.add(extraClass);

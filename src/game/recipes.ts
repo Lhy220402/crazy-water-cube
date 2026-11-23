@@ -42,6 +42,22 @@ export interface Recipe {
   readonly product: string;
 }
 
+/**
+ * 「抽取型」传奇配方（v3.0）：不产出固定产物，而是从 config.codex.myths 里随机抽一条。
+ * 目前只有一条：记赢赢 × 记赢赢 → 随机传奇。因为它依赖真通关隐藏产物记赢赢，
+ * 合成链页要等记赢赢首次收集后才显示整行（与记会成延伸行同理）。
+ */
+export interface MythRecipe {
+  readonly a: TileMatcher;
+  readonly b: TileMatcher;
+  /** 合成链显示用：材料里出现过的产物名（用于隐藏判断） */
+  readonly revealAfter: string;
+}
+
+export const MYTH_RECIPES: readonly MythRecipe[] = [
+  { a: { variant: 'ji-ying-ying' }, b: { variant: 'ji-ying-ying' }, revealAfter: 'ji-ying-ying' },
+];
+
 export const PRODUCTS: Readonly<Record<string, SpecialProduct>> = {
   // 内部 id 保持 'sui-jun' 不变（写进存档），v2.3 只把显示名改成「水军」
   'sui-jun': {
@@ -63,7 +79,8 @@ export const PRODUCTS: Readonly<Record<string, SpecialProduct>> = {
     buff: { id: 'shui-gang', label: '水缸·盛水', mult: 2, moves: 8 },
   },
   'ji-ying-ying': {
-    entry: { id: 'ji-ying-ying', name: '记赢赢', rarity: 'legend', kind: 'special', hue: 292, hue2: 264 },
+    // v3.0：传说组里最高的牌，颜色按用户要求向 OLD FIVE 的金虹材质看齐
+    entry: { id: 'ji-ying-ying', name: '记赢赢', rarity: 'legend', kind: 'special', mythic: true, hue: 292, hue2: 264 },
     points: 256,
     buff: { id: 'ji-ying-ying', label: '记赢赢·长赢', mult: 2, moves: -1 },
     trueWin: true,
@@ -120,6 +137,19 @@ export function matchRecipe(a: MatchTile, b: MatchTile): SpecialProduct | null {
       (matches(recipe.a, b) && matches(recipe.b, a))
     ) {
       return PRODUCTS[recipe.product] ?? null;
+    }
+  }
+  return null;
+}
+
+/** 两枚方块相撞是否触发「随机传奇」配方；无序匹配，返回配方或 null */
+export function matchMythRecipe(a: MatchTile, b: MatchTile): MythRecipe | null {
+  for (const recipe of MYTH_RECIPES) {
+    if (
+      (matches(recipe.a, a) && matches(recipe.b, b)) ||
+      (matches(recipe.a, b) && matches(recipe.b, a))
+    ) {
+      return recipe;
     }
   }
   return null;

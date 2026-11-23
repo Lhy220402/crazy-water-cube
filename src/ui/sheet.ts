@@ -3,9 +3,16 @@
  * 悬念契约：未收录的词条不剧透名字、不显示 x/y 总数，只留一张问号卡；
  * 特殊配方在合成链页公开配对（玩法需要），但产物名字首次触发前同样打码。
  */
-import { allEntries, entryById, isCodexRank, type GameConfig } from '../game/config.ts';
+import {
+  allEntries,
+  entryById,
+  isMythRank,
+  isVariantRank,
+  mythEntries,
+  type GameConfig,
+} from '../game/config.ts';
 import { RARITIES, entryText, huesOf, type CodexEntry } from '../game/codex.ts';
-import { RECIPES, specialProduct } from '../game/recipes.ts';
+import { MYTH_RECIPES, RECIPES, specialProduct } from '../game/recipes.ts';
 import { loreOf } from '../game/lore.ts';
 import { cancelTimer, el, later } from './dom.ts';
 
@@ -69,23 +76,29 @@ export function createSheet(opts: SheetOptions): SheetView {
     const node = el(doc, 'span', 'mini');
     node.dataset.rank = String(rank);
     const face = el(doc, 'span', 'mini__face');
-    if (isCodexRank(config, rank)) {
+    if (isVariantRank(config, rank)) {
       const entry = variant ? entryById(config, variant) : undefined;
       const special = specialProduct(variant) !== undefined;
-      const rarityId = special ? 'legend' : (entry?.rarity ?? 'legend');
+      const rarityId = special
+        ? 'legend'
+        : (entry?.rarity ?? (isMythRank(config, rank) ? 'myth' : 'legend'));
       const { hue, hue2 } = huesOf(entry, config.codex?.entries ?? [], variant ?? '');
       node.style.setProperty('--hue', String(hue));
       node.style.setProperty('--hue2', String(hue2));
       node.style.setProperty('--rarity', RARITIES[rarityId].color);
-      if (entry) node.dataset.rarity = special ? 'legend' : entry.rarity;
+      node.dataset.rarity = rarityId;
+      if (special) node.dataset.special = '1';
+      if (entry?.mythic) node.dataset.mythic = '1';
+      if (rarityId === 'myth') node.dataset.myth = '1';
       const text = entry?.tileName ?? entry?.name ?? '?';
       const width = [...text].length;
       const size = width <= 2 ? 'is-s1' : width === 3 ? 'is-s2' : width === 4 ? 'is-s3' : 'is-s4';
       const label = el(doc, 'span', `tile__label tile__label--codex ${size}`);
       label.append(el(doc, 'span', `tile__main${entry?.ring ? ' tile__main--ring' : ''}`, text));
-      // 图鉴里的小方块也带稀有度光效，和棋盘保持一致
-      if (rarityId === 'rare' || rarityId === 'legend') {
-        const aura = el(doc, 'span', `tile__aura tile__aura--${rarityId}`);
+      // 图鉴里的小方块也带稀有度光效，和棋盘保持一致（记赢赢用金虹 myth 光效）
+      const auraId = entry?.mythic ? 'myth' : rarityId;
+      if (auraId === 'rare' || auraId === 'legend' || auraId === 'myth') {
+        const aura = el(doc, 'span', `tile__aura tile__aura--${auraId}`);
         aura.setAttribute('aria-hidden', 'true');
         face.append(aura);
       }
@@ -121,10 +134,17 @@ export function createSheet(opts: SheetOptions): SheetView {
     chain.textContent = '';
     const tiers = config.tiers;
     const top = tiers[tiers.length - 1]!;
-    sub.textContent =
+    const counts = getCounts();
+    // 传奇是真通关之后的隐藏延伸：记赢赢首次收集前，这一整节都不存在
+    const mythUnlocked = (counts['ji-ying-ying'] ?? 0) > 0;
+    let subText =
       config.codex === undefined
         ? `两枚同级相碰，合成下一级。${top.name} 是这套体系的终点，不会再合成。`
         : `两枚同级相碰，合成下一级。${top.name} 之后没有固定名字了——每次合成都随机抽一条词条，收进图鉴。稀有度只影响出现概率，任意两条词条都能合。`;
+    if (mythUnlocked && (config.codex?.myths?.length ?? 0) > 0) {
+      subText += '传奇是当前最高的等级，只能由两枚记赢赢相撞召来。';
+    }
+    sub.textContent = subText;
 
     for (let rank = 0; rank < tiers.length - 1; rank += 1) {
       const row = el(doc, 'div', 'chain__row');
@@ -148,7 +168,6 @@ export function createSheet(opts: SheetOptions): SheetView {
 
     if (config.codex !== undefined) {
       chain.append(el(doc, 'p', 'chain__section', '特殊配方 · 相撞即合 · 产物首次触发前打码'));
-      const counts = getCounts();
       for (const recipe of RECIPES) {
         const product = specialProduct(recipe.product);
         if (!product) continue;
@@ -176,6 +195,27 @@ export function createSheet(opts: SheetOptions): SheetView {
           ),
         );
         chain.append(row);
+      }
+
+      // v3.0 传奇：记赢赢 × 记赢赢 → 随机传奇。依赖真通关隐藏产物，整节在记赢赢收集前隐藏
+      const myths = config.codex.myths ?? [];
+      if (mythUnlocked && myths.length > 0) {
+        chain.append(el(doc, 'p', 'chain__section chain__section--myth', '传奇 · 相撞即合 · 产物随机'));
+        const knownMyth = myths.find((entry) => (counts[entry.id] ?? 0) > 0);
+        const mythPoints = config.codex.mythPoints ?? 512;
+        for (const recipe of MYTH_RECIPES) {
+          if ((counts[recipe.revealAfter] ?? 0) === 0) continue;
+          const row = el(doc, 'div', 'chain__row chain__row--recipe chain__row--myth');
+          row.append(recipeMini(recipe.a));
+          row.append(el(doc, 'span', 'chain__times', '×2'));
+          row.append(el(doc, 'span', 'chain__arrow', '→'));
+          row.append(knownMyth ? miniTile(config.mythRank, knownMyth.id) : mysteryMini());
+          row.append(el(doc, 'span', 'chain__name', `传奇词条 · 随机抽取 · +${mythPoints}`));
+          chain.append(row);
+        }
+        chain.append(
+          el(doc, 'p', 'chain__section-hint', '两枚传奇相撞，也会再召来一位传奇。'),
+        );
       }
     }
   }
@@ -217,23 +257,59 @@ export function createSheet(opts: SheetOptions): SheetView {
     bar.append(fill);
     codexList.append(bar);
 
-    const collected = entries.filter((entry) => (counts[entry.id] ?? 0) > 0);
-    if (collected.length > 0) {
+    const normalEntries = entries.filter((entry) => entry.rarity !== 'myth');
+    const mythList = mythEntries(config);
+    const normalCollected = normalEntries.filter((entry) => (counts[entry.id] ?? 0) > 0);
+    if (normalCollected.length > 0) {
       const grid = el(doc, 'div', 'codex__grid');
       codexList.append(grid);
-      for (const entry of collected) {
+      for (const entry of normalCollected) {
         grid.append(buildCard(entry, counts[entry.id] ?? 0));
       }
     }
-
-    if (!complete()) {
+    // 普通词条还没集齐时保留悬念提示；集齐后只差传奇时由传奇分区自己承担悬念
+    if (normalCollected.length < normalEntries.length) {
       const mystery = el(doc, 'div', 'mystery');
       const veil = el(doc, 'div', 'mystery__face');
       veil.append(el(doc, 'span', 'mystery__mark', '？'));
       mystery.append(veil);
       mystery.append(el(doc, 'p', 'mystery__text', '还没收录的词条，继续合成才能揭开'));
       codexList.append(mystery);
-    } else {
+    }
+
+    // v3.0：传奇单独分区（未收集时只显示分区标题 + 问号卡，不剧透名字）
+    if (mythList.length > 0) {
+      const mythCollected = mythList.filter((entry) => (counts[entry.id] ?? 0) > 0);
+      const section = el(doc, 'section', 'codex__section codex__section--myth');
+      const title = el(doc, 'h3', 'codex__section-title', '传奇');
+      title.append(el(doc, 'span', 'codex__section-tag', '最高等级'));
+      section.append(title);
+      section.append(
+        el(
+          doc,
+          'p',
+          'codex__section-hint',
+          mythCollected.length > 0 ? `已现世 ${mythCollected.length} 位` : '藏得最深，尚未现世',
+        ),
+      );
+      if (mythCollected.length > 0) {
+        const grid = el(doc, 'div', 'codex__grid codex__grid--myth');
+        for (const entry of mythCollected) {
+          grid.append(buildCard(entry, counts[entry.id] ?? 0));
+        }
+        section.append(grid);
+      } else {
+        const mythMystery = el(doc, 'div', 'mystery mystery--myth');
+        const veil = el(doc, 'div', 'mystery__face');
+        veil.append(el(doc, 'span', 'mystery__mark', '？'));
+        mythMystery.append(veil);
+        mythMystery.append(el(doc, 'p', 'mystery__text', '传奇藏得最深，继续探索才有机会见到'));
+        section.append(mythMystery);
+      }
+      codexList.append(section);
+    }
+
+    if (complete()) {
       // 集齐后的收尾：不把话说死，留一个继续更新的口子
       const tail = el(doc, 'div', 'codex__continue');
       tail.append(el(doc, 'span', 'codex__continue-text', '未完待续'));
@@ -251,10 +327,12 @@ export function createSheet(opts: SheetOptions): SheetView {
     const { hue, hue2 } = huesOf(entry, config.codex?.entries ?? [], entry.id);
     card.style.setProperty('--hue', String(hue));
     card.style.setProperty('--hue2', String(hue2));
-    card.style.setProperty('--rarity', (special ? RARITIES.legend : rarity).color);
+    card.style.setProperty('--rarity', rarity.color);
     card.dataset.entry = entry.id;
     card.dataset.rarity = entry.rarity;
     card.dataset.kind = entry.kind ?? 'entry';
+    // 记赢赢：传说组里最高的牌，卡片同样用 OLD FIVE 同款金虹材质
+    if (entry.mythic) card.dataset.mythic = '1';
 
     const face = el(doc, 'div', 'card__face');
     const name = entryText(entry);

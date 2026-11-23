@@ -345,6 +345,26 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     });
   }
 
+  /** v3.0：抽到传奇——全屏直接放大词条名，配金虹标题 + 大礼花（用户要求「体现震撼」） */
+  function openMythReveal(entry: CodexEntry, after?: () => void): void {
+    overlay.show({
+      kind: 'myth',
+      eyebrow: '传奇 · 现世',
+      title: entryText(entry),
+      text: loreOf(entry.id),
+      stats: [
+        { label: '图鉴收录', value: `×${codexCounts[entry.id] ?? 1}` },
+        { label: '得分', value: String(state.score) },
+      ],
+      actions: [
+        { label: '继续合成', primary: true, action: () => {} },
+        { label: '查看图鉴', action: () => sheet.open('codex') },
+      ],
+      burst: true,
+      onClose: after,
+    });
+  }
+
   function openGameOver(fromRestore = false): void {
     // 失败音效每个死局只播一次：被解释卡 / 通关层挡住后补弹结束层时不再重复
     if (!overAnnounced) {
@@ -611,17 +631,35 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
       if (isNew && !firstNew) firstNew = product.entry;
     }
 
-    if (result.justTrueWon) hud.announce('真通关！合出了记赢赢，本局得分永久 ×2');
+    // v3.0：本步抽到的传奇（记赢赢 ×2 / 传奇 ×2）——要全屏揭示，且优先级最高
+    const mythDraw = result.codexDraws.find(
+      (draw) => entryById(config, draw.entryId)?.rarity === 'myth',
+    );
+    const mythEntry = mythDraw ? entryById(config, mythDraw.entryId) : undefined;
+
+    if (mythEntry) hud.announce(`传奇现世：${entryText(mythEntry)}`);
+    else if (result.justTrueWon) hud.announce('真通关！合出了记赢赢，本局得分永久 ×2');
     else if (result.justWon) hud.announce('合出 OLD FIVE——真通关了吗？');
     else if (firstNew) hud.announce(`首次收录 ${entryText(firstNew)}，图鉴已收录 ${sheet.collectedCount()} 条`);
     else if (newNames.length > 0) hud.announce(`抽到词条 ${newNames.join('、')}`);
     else hud.announce(`得分 ${state.score}`);
 
-    // 弹层优先级：真通关 > 假通关 > 首次收录解释 > 结束
+    // 弹层优先级：传奇现世 > 真通关 > 假通关 > 首次收录解释 > 结束
     // 「隋」「李娜」没有解释文案（v2.4 用户要求去掉）：首次收录不弹解释卡，只播报收录结果
     // 结束层优先级最低，但必须补弹：本步同时触发解释卡 / 通关层时，先记下 over，
     // 等这些弹层关闭后再由 onClose 补上「无处可合」，否则失败判定会被吞掉。
-    if (result.justTrueWon) openTrueWin(overNow);
+    if (mythEntry) {
+      openMythReveal(mythEntry, () => {
+        // 同一步的其它高优先级事件（真/假通关、首次解释、结束）在传奇层关闭后接续
+        if (result.justTrueWon) openTrueWin(overNow);
+        else if (result.justWon) openFakeWin(overNow);
+        else if (firstNew && firstNew.id !== mythEntry.id && loreOf(firstNew.id).length > 0) {
+          openLore(firstNew, overNow);
+        } else if (overNow) {
+          scheduleGameOverAfterClose();
+        }
+      });
+    } else if (result.justTrueWon) openTrueWin(overNow);
     else if (result.justWon) openFakeWin(overNow);
     else if (firstNew && loreOf(firstNew.id).length > 0) openLore(firstNew, overNow);
     else if (overNow) openGameOver();

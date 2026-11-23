@@ -7,7 +7,7 @@
  * 特殊配方（隋+军 等）见 recipes.ts，优先于同级判定。
  * 想加新的固定等级？直接在 TIERS 末尾追加一项，词条模式的入口会自动后移。
  */
-import { CODEX_ENTRIES, findCodexEntry, type CodexEntry } from './codex.ts';
+import { CODEX_ENTRIES, MYTH_ENTRIES, findCodexEntry, type CodexEntry } from './codex.ts';
 import { specialEntries } from './recipes.ts';
 
 export type { CodexEntry } from './codex.ts';
@@ -42,6 +42,13 @@ export interface CodexConfig {
   readonly points: number;
   /** 特殊合成产物：不进抽取池，触发即收录图鉴 */
   readonly specials: readonly CodexEntry[];
+  /**
+   * 传奇池（v3.0）：不进普通抽取池，只由「记赢赢 × 记赢赢」抽到；
+   * 不传 / 空数组 = 不启用传奇等级（自定义配置向后兼容）。
+   */
+  readonly myths?: readonly CodexEntry[];
+  /** 合成 / 抽取传奇时的基础分（默认 512） */
+  readonly mythPoints?: number;
 }
 
 export interface GameConfig {
@@ -60,6 +67,8 @@ export interface GameConfig {
   readonly codex?: CodexConfig;
   /** 词条等级的 rank（= tiers.length）；没有词条模式时为 -1 */
   readonly codexRank: number;
+  /** 传奇等级的 rank（= codexRank + 1）；没启用传奇池时为 -1 */
+  readonly mythRank: number;
   /** 合法等级上限，用于存档校验 */
   readonly maxRank: number;
   /** 等级配置签名；存档签名不一致时自动放弃旧档，避免等级错位 */
@@ -82,11 +91,13 @@ export const DEFAULT_SPAWN: readonly SpawnRule[] = [
   { rank: 1, weight: 1 },
 ];
 
-/** 默认的词条收集配置：词条池 + 特殊产物 + 每次合成得分 */
+/** 默认的词条收集配置：词条池 + 特殊产物 + 传奇池 + 每次合成得分 */
 export const DEFAULT_CODEX: CodexConfig = {
   entries: CODEX_ENTRIES,
   points: 64,
   specials: specialEntries(),
+  myths: MYTH_ENTRIES,
+  mythPoints: 512,
 };
 
 function signatureOf(tiers: readonly Tier[]): string {
@@ -120,7 +131,12 @@ export function createConfig(overrides: ConfigOverrides = {}): GameConfig {
   if (codex && codex.entries.length === 0) throw new Error('词条池不能为空');
   if (codex && !(codex.points > 0)) throw new Error('词条得分必须为正数');
   const codexRank = codex ? tiers.length : -1;
-  const maxRank = codex ? codexRank : tiers.length - 1;
+  // v3.0：传奇是词条之后的更高一级；只有配置了传奇池才启用
+  const mythRank = codex && codex.myths && codex.myths.length > 0 ? codexRank + 1 : -1;
+  if (mythRank >= 0 && !((codex?.mythPoints ?? 512) > 0)) {
+    throw new Error('传奇得分必须为正数');
+  }
+  const maxRank = mythRank >= 0 ? mythRank : codex ? codexRank : tiers.length - 1;
 
   return {
     size: overrides.size ?? 4,
@@ -131,6 +147,7 @@ export function createConfig(overrides: ConfigOverrides = {}): GameConfig {
     storageKey: overrides.storageKey ?? 'jun2048',
     ...(codex ? { codex } : {}),
     codexRank,
+    mythRank,
     maxRank,
     tiersSignature: signatureOf(tiers),
   };
@@ -138,21 +155,24 @@ export function createConfig(overrides: ConfigOverrides = {}): GameConfig {
 
 export const DEFAULT_CONFIG: GameConfig = createConfig();
 
-/** 该等级能否继续参与合成：普通等级升一级；OLD FIVE 进词条；词条之间继续随机 */
+/** 该等级能否继续参与合成：普通等级升一级；OLD FIVE 进词条；词条之间继续随机；传奇只能配传奇 */
 export function canMergeRank(config: GameConfig, rank: number): boolean {
   if (rank < 0) return false;
   if (rank + 1 < config.tiers.length) return true;
   if (rank === config.tiers.length - 1) return config.codex !== undefined;
-  return config.codex !== undefined && rank === config.codexRank;
+  if (rank === config.codexRank) return config.codex !== undefined;
+  return isMythRank(config, rank);
 }
 
-/** 两枚 rank 级合成后得到的等级：普通等级升一级，OLD FIVE 及词条都落在词条级 */
+/** 两枚 rank 级合成后得到的等级：普通等级升一级，OLD FIVE 及词条都落在词条级，传奇仍是传奇 */
 export function mergedRankOf(config: GameConfig, rank: number): number {
+  if (isMythRank(config, rank)) return config.mythRank;
   return rank >= config.tiers.length - 1 ? config.codexRank : rank + 1;
 }
 
 /** 合成出某个等级时的得分 */
 export function pointsForRank(config: GameConfig, rank: number): number {
+  if (isMythRank(config, rank)) return config.codex?.mythPoints ?? 512;
   if (rank === config.codexRank) return config.codex?.points ?? 0;
   return config.tiers[rank]?.points ?? 0;
 }
@@ -162,20 +182,37 @@ export function isCodexRank(config: GameConfig, rank: number): boolean {
   return config.codex !== undefined && rank === config.codexRank;
 }
 
+/** v3.0：这个等级是不是「传奇级」 */
+export function isMythRank(config: GameConfig, rank: number): boolean {
+  return config.mythRank >= 0 && rank === config.mythRank;
+}
+
+/** 带词条 variant 的等级（普通词条级 + 传奇级） */
+export function isVariantRank(config: GameConfig, rank: number): boolean {
+  return isCodexRank(config, rank) || isMythRank(config, rank);
+}
+
 export function tierAt(config: GameConfig, rank: number): Tier | undefined {
   return config.tiers[rank];
 }
 
-/** 按 id 找词条（抽取池 + 特殊产物）；存档校验与渲染都用它 */
+/** 按 id 找词条（抽取池 + 特殊产物 + 传奇池）；存档校验与渲染都用它 */
 export function entryById(config: GameConfig, id: string): CodexEntry | undefined {
   if (!config.codex) return undefined;
   return (
-    findCodexEntry(config.codex.entries, id) ?? findCodexEntry(config.codex.specials, id)
+    findCodexEntry(config.codex.entries, id) ??
+    findCodexEntry(config.codex.specials, id) ??
+    findCodexEntry(config.codex.myths ?? [], id)
   );
 }
 
-/** 图鉴可收录的全部词条（抽取池 + 特殊产物） */
+/** 图鉴可收录的全部词条（抽取池 + 特殊产物 + 传奇池） */
 export function allEntries(config: GameConfig): readonly CodexEntry[] {
   if (!config.codex) return [];
-  return [...config.codex.entries, ...config.codex.specials];
+  return [...config.codex.entries, ...config.codex.specials, ...(config.codex.myths ?? [])];
+}
+
+/** 传奇池里的词条（没有启用传奇时为空） */
+export function mythEntries(config: GameConfig): readonly CodexEntry[] {
+  return config.codex?.myths ?? [];
 }

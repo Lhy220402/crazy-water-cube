@@ -6,7 +6,7 @@ import { cancelTimer, el, later } from './dom.ts';
 
 const OVERLAY_MS = 240;
 
-export type OverlayKind = 'win' | 'truewin' | 'over' | 'confirm' | 'lore' | 'about' | 'update';
+export type OverlayKind = 'win' | 'truewin' | 'myth' | 'over' | 'confirm' | 'lore' | 'about' | 'update';
 
 export interface OverlayAction {
   label: string;
@@ -57,17 +57,19 @@ export function createOverlay(opts: OverlayOptions): OverlayView {
   let focusBefore: HTMLElement | null = null;
   let afterClose: (() => void) | null = null;
 
-  function burstConfetti(big: boolean): void {
+  function burstConfetti(kind: OverlayKind): void {
     burst.textContent = '';
-    // 水主题礼花：蓝 / 青 / 金 的水滴与亮片
-    const hues = [205, 190, 215, 45, 175, 230];
-    const count = big ? 36 : 22;
+    // 水主题礼花：蓝 / 青 / 金 的水滴与亮片；传奇用更密的金 / 琥珀色，更「现世」
+    const myth = kind === 'myth';
+    const big = kind === 'truewin' || myth;
+    const hues = myth ? [45, 38, 28, 52, 205, 190] : [205, 190, 215, 45, 175, 230];
+    const count = myth ? 56 : big ? 36 : 22;
     for (let i = 0; i < count; i += 1) {
       const spark = el(doc, 'span', `spark${i % 3 === 0 ? ' spark--drop' : ''}`);
       const hue = hues[i % hues.length]!;
       spark.style.setProperty('--hue', String(hue));
-      spark.style.setProperty('--dx', `${Math.round((rng() - 0.5) * (big ? 380 : 300))}px`);
-      spark.style.setProperty('--dy', `${Math.round(80 + rng() * (big ? 300 : 240))}px`);
+      spark.style.setProperty('--dx', `${Math.round((rng() - 0.5) * (myth ? 420 : big ? 380 : 300))}px`);
+      spark.style.setProperty('--dy', `${Math.round(80 + rng() * (myth ? 340 : big ? 300 : 240))}px`);
       spark.style.setProperty('--rot', `${Math.round(180 + rng() * 900)}deg`);
       spark.style.setProperty('--delay', `${Math.round(rng() * 140)}ms`);
       spark.style.left = `${35 + rng() * 30}%`;
@@ -95,6 +97,7 @@ export function createOverlay(opts: OverlayOptions): OverlayView {
     title.textContent = content.title;
     title.classList.toggle('panel__title--win', content.kind === 'win');
     title.classList.toggle('panel__title--truewin', content.kind === 'truewin');
+    title.classList.toggle('panel__title--myth', content.kind === 'myth');
     title.classList.toggle('panel__title--codex', content.kind === 'lore');
     text.textContent = content.text;
 
@@ -131,7 +134,7 @@ export function createOverlay(opts: OverlayOptions): OverlayView {
     overlay.setAttribute('aria-hidden', 'false');
     void overlay.offsetWidth; // 强制 reflow，否则过渡不触发
     overlay.classList.add('is-open');
-    if (content.burst) burstConfetti(content.kind === 'truewin');
+    if (content.burst) burstConfetti(content.kind);
 
     const wanted =
       content.focus === 'first'

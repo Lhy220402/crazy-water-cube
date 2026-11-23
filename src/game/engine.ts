@@ -3,8 +3,10 @@
  * 外部只需要 config / rng，因此可以单测、可以换棋盘尺寸、可以扩展等级与词条。
  *
  * 配对规则（单步内每枚方块最多参与一次合成，不连锁）：
+ *   0. 传奇抽取优先：记赢赢 × 记赢赢 → 从传奇池随机抽一条（v3.0）
  *   1. 特殊配方优先：隋+军→水军、隋圆+军→隋军隋圆、隋+钢→水缸、记+赢²→记赢赢（无序匹配）
- *   2. 同级相碰：普通等级升一级；OLD FIVE 与词条级、任意两条词条 → 全池随机抽一条
+ *   2. 同级相碰：普通等级升一级；OLD FIVE 与词条级、任意两条词条 → 全池随机抽一条；
+ *      传奇 × 传奇 → 再抽一条传奇（传奇不能与普通词条相合）
  * 增益：特殊合成挂 buff，后续若干步所有合成得分乘倍率（多个乘算叠加）。
  * 通关：首次合出 OLD FIVE = 假通关（won）；首次合出 记赢赢 = 真通关（trueWon）。
  */
@@ -12,12 +14,15 @@ import {
   canMergeRank,
   entryById,
   isCodexRank,
+  isMythRank,
+  isVariantRank,
   mergedRankOf,
+  mythEntries,
   pointsForRank,
   type GameConfig,
 } from './config.ts';
 import { drawCodexEntry, type CodexEntry } from './codex.ts';
-import { matchRecipe, specialProduct, type SpecialProduct } from './recipes.ts';
+import { matchMythRecipe, matchRecipe, specialProduct, type SpecialProduct } from './recipes.ts';
 import { buffMultiplier, cloneBuffs, parseBuffs, tickBuffs, type Buff } from './buffs.ts';
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
@@ -187,22 +192,33 @@ function drawEntry(config: GameConfig, rng: Rng): CodexEntry {
   return drawCodexEntry(entries, rng);
 }
 
+/** 传奇池抽取（只有「记赢赢 × 记赢赢」和「传奇 × 传奇」会走到这里） */
+function drawMythEntry(config: GameConfig, rng: Rng): CodexEntry {
+  const entries = mythEntries(config);
+  if (entries.length === 0) throw new Error('传奇池为空');
+  return drawCodexEntry(entries, rng);
+}
+
 /* ------------------------------------------------------------------ */
 /* 配对判定                                                            */
 /* ------------------------------------------------------------------ */
 
 type PairResult =
   | { kind: 'special'; product: SpecialProduct }
+  | { kind: 'myth' }
   | { kind: 'rank'; rank: number }
   | { kind: 'codex' }
   | null;
 
-/** 两枚方块相撞能否合成：先特殊配方，再同级（词条级任意配对） */
+/** 两枚方块相撞能否合成：先传奇抽取配方，再特殊配方，再同级（词条级任意配对） */
 export function pairResult(config: GameConfig, a: Tile, b: Tile): PairResult {
+  // 记赢赢 × 记赢赢 → 随机传奇（v3.0，优先于一切普通判定；未配置传奇池的自定义配置不启用）
+  if ((config.codex?.myths?.length ?? 0) > 0 && matchMythRecipe(a, b)) return { kind: 'myth' };
   const product = matchRecipe(a, b);
   if (product) return { kind: 'special', product };
   if (a.rank !== b.rank || !canMergeRank(config, a.rank)) return null;
   const rank = mergedRankOf(config, a.rank);
+  if (isMythRank(config, rank)) return { kind: 'myth' };
   return isCodexRank(config, rank) ? { kind: 'codex' } : { kind: 'rank', rank };
 }
 
@@ -320,6 +336,11 @@ export function move(
             movesLeft: product.buff.moves,
           });
           if (product.trueWin && !state.trueWon) justTrueWon = true;
+        } else if (pair.kind === 'myth') {
+          // 记赢赢 × 记赢赢 / 传奇 × 传奇：从传奇池随机抽一条，落成传奇级方块
+          const entry = drawMythEntry(config, rng);
+          resultTile = { id: targetId, rank: config.mythRank, variant: entry.id };
+          gained = Math.round(pointsForRank(config, config.mythRank) * mult);
         } else if (pair.kind === 'codex') {
           const entry = drawEntry(config, rng);
           resultTile = { id: targetId, rank: config.codexRank, variant: entry.id };
@@ -409,7 +430,9 @@ export function move(
 
   const justWon =
     !state.won &&
-    merges.some((merge) => merge.rank >= config.winRank && !isCodexRank(config, merge.rank));
+    merges.some(
+      (merge) => merge.rank >= config.winRank && !isVariantRank(config, merge.rank),
+    );
   if (justWon) next.won = true;
   next.over = !canMove(next, config);
 
@@ -474,10 +497,14 @@ export function deserialize(raw: unknown, config: GameConfig): GameState | null 
     if (rank === null) continue;
     if (!isInt(rank, 0, config.maxRank)) return null;
     const variant = variants?.[i] ?? null;
-    if (isCodexRank(config, rank)) {
-      // 词条方块必须带当前池子里还存在的词条 id；池子换血后旧档判坏档开新局
+    if (isVariantRank(config, rank)) {
+      // 词条 / 传奇方块必须带当前池子里还存在的 id；池子换血后旧档判坏档开新局
       if (typeof variant !== 'string' || variant.length === 0) return null;
-      if (!entryById(config, variant)) return null;
+      const entry = entryById(config, variant);
+      if (!entry) return null;
+      // 传奇 id 只能落在传奇级；普通词条 id 不能占传奇级
+      if (isCodexRank(config, rank) && entry.rarity === 'myth') return null;
+      if (isMythRank(config, rank) && entry.rarity !== 'myth') return null;
       cells[i] = { id: nextId, rank, variant };
     } else {
       cells[i] = { id: nextId, rank };

@@ -21,7 +21,7 @@
  * 特殊合成产物（水军 / 隋军隋圆 / 水缸 / 记赢赢 / 李娜 / 妙 / 记会成）不在抽取池里，见 recipes.ts。
  */
 
-export type RarityId = 'common' | 'rare' | 'legend';
+export type RarityId = 'common' | 'rare' | 'legend' | 'myth';
 
 export interface Rarity {
   readonly id: RarityId;
@@ -41,6 +41,8 @@ export const RARITIES: Readonly<Record<RarityId, Rarity>> = {
   common: { id: 'common', label: '普通', short: '普', color: '#8aa2b4' },
   rare: { id: 'rare', label: '稀有', short: '稀', color: '#8ca6bc' },
   legend: { id: 'legend', label: '传说', short: '传', color: '#c3a675' },
+  // v3.0：传奇是当前版本最高等级，只从「两枚记赢赢」的抽取里出现
+  myth: { id: 'myth', label: '传奇', short: '奇', color: '#c1903f' },
 };
 
 export interface CodexEntry {
@@ -61,6 +63,11 @@ export interface CodexEntry {
   readonly hue?: number;
   /** 渐变第二色相（0-360）；v2.4 起与 hue 的差值收窄，避免两块颜色打架 */
   readonly hue2?: number;
+  /**
+   * v3.0：传说完美级材质 —— 与 OLD FIVE 同款金虹玻璃（记赢赢用）。
+   * 只影响表现层；传奇稀有度有自己的一整套金虹材质，不需要这个字段。
+   */
+  readonly mythic?: boolean;
 }
 
 /**
@@ -114,6 +121,26 @@ export const CODEX_ENTRIES: readonly CodexEntry[] = [
   { id: 'zuolun', name: '左轮', rarity: 'rare', weight: 2, hue: 218, hue2: 202 }, // 冷钢蓝
   { id: 'yu-zi', name: '鱼籽', rarity: 'rare', weight: 2, hue: 16, hue2: 30 }, // 鱼籽橙
   { id: 'he-si', name: '何思', rarity: 'rare', weight: 2, hue: 248, hue2: 232 }, // 雾沉思蓝
+];
+
+/**
+ * 传奇词条池（12 条，v3.0）。不进上面的随机池，也不会从 OLD FIVE / 普通词条合成里抽到：
+ * 唯一入口是「记赢赢 × 记赢赢」相撞后从这里随机抽一条。
+ * 全部为 myth 稀有度、权重均匀（默认 1），图鉴里单独分区。
+ */
+export const MYTH_ENTRIES: readonly CodexEntry[] = [
+  { id: 'meihui', name: '煤灰', rarity: 'myth', weight: 1, hue: 218, hue2: 200 }, // 冷灰
+  { id: 'zhaojun', name: '昭君', rarity: 'myth', weight: 1, hue: 350, hue2: 22 }, // 昭君红
+  { id: 'xiangjun', name: '象郡', rarity: 'myth', weight: 1, hue: 36, hue2: 24 }, // 旧铜
+  { id: 'xiaofeng', name: '小风', rarity: 'myth', weight: 1, hue: 190, hue2: 170 }, // 风青
+  { id: 'yingtao', name: '🍒', rarity: 'myth', weight: 1, hue: 344, hue2: 352 }, // 樱桃
+  { id: 'jiasheng', name: '假生', rarity: 'myth', weight: 1, hue: 42, hue2: 30 }, // 暖金
+  { id: '666', name: '666', rarity: 'myth', weight: 1, hue: 28, hue2: 48 }, // 琥珀
+  { id: 'hongying', name: '红鹰', rarity: 'myth', weight: 1, hue: 12, hue2: 350 }, // 红鹰
+  { id: 'wangxuedi', name: '王雪地', rarity: 'myth', weight: 1, hue: 205, hue2: 188 }, // 雪地蓝
+  { id: 'zhongshu', name: '种树', rarity: 'myth', weight: 1, hue: 128, hue2: 108 }, // 树青
+  { id: 'guojing', name: '国晶', rarity: 'myth', weight: 1, hue: 260, hue2: 240 }, // 晶紫
+  { id: 'chuncheng', name: '春橙', rarity: 'myth', weight: 1, hue: 18, hue2: 36 }, // 春橙
 ];
 
 /** 纯文本场景（无障碍、图鉴卡片、解释卡、配方列表）用的名字 */
