@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { JSDOM, VirtualConsole } from 'jsdom';
 import { GAME_VERSION } from '../src/game/meta.ts';
+import { decodeSaveBundle, encodeSaveBundle } from '../src/ui/save-transfer.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const html = await readFile(resolve(root, 'dist/2048.html'), 'utf8');
@@ -763,6 +764,10 @@ test('关于：简介 + Gitee/GitHub 两个仓库链接，入口在图鉴抽屉�
   assert.equal(aboutText.includes('记'), false, '关于不泄露真通关');
   assert.equal(aboutText.includes('记赢赢'), false, '关于不泄露真通关配方');
   assert.equal(aboutText.includes('赢²'), false, '关于不泄露真通关配方');
+  assert.ok(
+    (h.$('#overlay-actions').textContent ?? '').includes('存档导出 / 导入'),
+    '关于里应能找到存档导出 / 导入入口',
+  );
   const links = h.$('#overlay-actions').querySelectorAll('a.pill');
   assert.equal(links.length, 2, 'v2.4 去掉在线玩，只留两个仓库');
   assert.match(links[0]!.getAttribute('href') ?? '', /gitee\.com\/idealismo10\/crazy-water-cube/);
@@ -1501,4 +1506,98 @@ test('图鉴收集进度条：未集齐只给比例，集齐后显示总数 + �
   assert.equal(full.$('#codex').querySelectorAll('.codex__grid--myth .card').length, 8);
   assert.equal(full.$('#codex').querySelectorAll('.mystery').length, 0);
   full.close();
+});
+
+test('存档导出：开场「存档导入 / 导出」入口生成 JWC1 存档码，不收起开场界面', async () => {
+  const h = await boot(
+    saved([0, 0, ...EMPTY16.slice(2)], { score: 64, moves: 7 }),
+    { sui: 2, ji: 1 },
+    undefined,
+    { best: 512, skipIntro: false },
+  );
+  assert.match(h.$('#intro-save').textContent ?? '', /存档/);
+  h.$('#intro-save').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(30);
+  assert.equal(h.$('#overlay').hidden, false);
+  assert.match(h.$('#overlay-eyebrow').textContent ?? '', /存档/);
+  const exportButton = Array.from(
+    h.$('#overlay-actions').querySelectorAll<HTMLButtonElement>('button'),
+  ).find((button) => button.textContent === '导出存档');
+  assert.ok(exportButton, '应有导出按钮');
+  exportButton.dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(30);
+  const area = h.$('#overlay-extra').querySelector<HTMLTextAreaElement>('textarea.save__code');
+  assert.ok(area, '应显示存档码文本框');
+  assert.ok(area.value.startsWith('JWC1.'));
+  const decoded = decodeSaveBundle(area.value);
+  assert.ok(decoded);
+  assert.equal(decoded.best, '512');
+  assert.deepEqual(JSON.parse(decoded.codex ?? '{}'), { sui: 2, ji: 1 });
+  assert.equal(decoded.game, h.win.localStorage.getItem('jun2048'));
+  assert.equal(h.$('#intro').hidden, false, '导出不应收起开场界面');
+  h.close();
+});
+
+test('存档导入：粘贴存档码写回最高分 / 图鉴 / 棋局并提示重新载入', async () => {
+  const h = await boot(undefined, undefined, undefined, { skipIntro: false });
+  assert.equal(h.$('#intro-best').textContent, '0');
+  h.$('#intro-save').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(30);
+  const importButton = Array.from(
+    h.$('#overlay-actions').querySelectorAll<HTMLButtonElement>('button'),
+  ).find((button) => button.textContent === '导入存档');
+  assert.ok(importButton);
+  importButton.dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(30);
+  const area = h.$('#overlay-extra').querySelector<HTMLTextAreaElement>('textarea.save__code');
+  assert.ok(area);
+  const code = encodeSaveBundle({
+    game: JSON.stringify(saved([0, 0, ...EMPTY16.slice(2)], { score: 128, moves: 12 })),
+    best: '777',
+    codex: JSON.stringify({ sui: 2, ji: 1 }),
+  });
+  area.value = code;
+  const apply = Array.from(
+    h.$('#overlay-extra').querySelectorAll<HTMLButtonElement>('button'),
+  ).find((button) => button.textContent === '导入存档');
+  assert.ok(apply);
+  apply.dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(60);
+  assert.match(h.$('#overlay-title').textContent ?? '', /已导入/);
+  assert.match(h.$('#overlay-text').textContent ?? '', /最高分 777 · 图鉴 2 条/);
+  assert.equal(h.win.localStorage.getItem('jun2048.best'), '777');
+  assert.deepEqual(JSON.parse(h.win.localStorage.getItem('jun2048.codex') ?? '{}'), { sui: 2, ji: 1 });
+  const importedGame = JSON.parse(h.win.localStorage.getItem('jun2048') ?? '{}');
+  assert.equal(importedGame.score, 128);
+  assert.equal(importedGame.moves, 12);
+  h.close();
+});
+
+test('存档导入：无效存档码报错，不写入任何存档', async () => {
+  const h = await boot(undefined, undefined, undefined, { skipIntro: false });
+  h.$('#intro-save').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(30);
+  const importButton = Array.from(
+    h.$('#overlay-actions').querySelectorAll<HTMLButtonElement>('button'),
+  ).find((button) => button.textContent === '导入存档');
+  assert.ok(importButton);
+  importButton.dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(30);
+  const area = h.$('#overlay-extra').querySelector<HTMLTextAreaElement>('textarea.save__code');
+  assert.ok(area);
+  area.value = 'not-a-save-code';
+  const apply = Array.from(
+    h.$('#overlay-extra').querySelectorAll<HTMLButtonElement>('button'),
+  ).find((button) => button.textContent === '导入存档');
+  assert.ok(apply);
+  apply.dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(30);
+  assert.equal(h.$('#overlay-title').textContent, '粘贴存档码', '无效时停留在导入层');
+  const error = h.$('#overlay-extra').querySelector<HTMLElement>('.save__error');
+  assert.ok(error);
+  assert.equal(error.hidden, false);
+  assert.match(error.textContent ?? '', /存档码无效/);
+  assert.equal(h.win.localStorage.getItem('jun2048.best'), null);
+  assert.equal(h.win.localStorage.getItem('jun2048.codex'), null);
+  h.close();
 });

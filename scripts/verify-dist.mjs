@@ -86,12 +86,20 @@ check(
   html.includes('传奇词条 · 随机抽取') && html.includes('传奇 · 现世'),
   '缺少传奇抽取配方 / 现世文案',
 );
-check(html.includes('3.0.2'), '缺少 v3.0.2 版本号');
+check(html.includes('3.1.0'), '缺少 v3.1.0 版本号');
 check(
   html.includes('tile__aura') && html.includes('heart-rise'),
   '缺少稀有度光效 / 爱心粒子',
 );
 check(html.includes('版本已更新') && html.includes('.version'), '缺少版本更新弹窗（jun2048.version）');
+// v3.1：存档导出 / 导入
+check(
+  html.includes('id="intro-save"') &&
+    html.includes('id="overlay-extra"') &&
+    html.includes('save__code') &&
+    html.includes('JWC1.'),
+  '缺少存档导出 / 导入入口或存档码',
+);
 // v2.4：关于里不再有在线玩按钮（GitHub Pages 已经是对外的正式入口）
 check(!html.includes('github.io'), '关于里不应再有 GitHub Pages 在线玩链接');
 check(html.includes('id="intro"') && html.includes('id="intro-start"'), '缺少开场界面');

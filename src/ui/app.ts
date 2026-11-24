@@ -24,7 +24,7 @@ import {
   type MoveResult,
 } from '../game/engine.ts';
 import { createKV, type KV } from './storage.ts';
-import { cancelTimer, later, need } from './dom.ts';
+import { cancelTimer, el, later, need } from './dom.ts';
 import { createBoard } from './board.ts';
 import { createHud } from './hud.ts';
 import { createOverlay, type OverlayAction, type OverlayContent } from './overlay.ts';
@@ -34,6 +34,13 @@ import { createInput } from './input.ts';
 import { createIntro, type IntroView } from './intro.ts';
 import { createAudio } from './audio.ts';
 import { buildAbout } from './about.ts';
+import {
+  decodeSaveBundle,
+  encodeSaveBundle,
+  readSaveBundle,
+  summarizeSaveBundle,
+  writeSaveBundle,
+} from './save-transfer.ts';
 import { GAME_VERSION, LEGACY_VERSION } from '../game/meta.ts';
 import {
   detectVersionChange,
@@ -102,6 +109,7 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     text: need<HTMLElement>(root, '#overlay-text'),
     stats: need<HTMLElement>(root, '#overlay-stats'),
     actions: need<HTMLElement>(root, '#overlay-actions'),
+    extra: need<HTMLElement>(root, '#overlay-extra'),
     burst: need<HTMLElement>(root, '#burst'),
   });
   const sheet = createSheet({
@@ -142,6 +150,8 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   let pendingGameOver = false;
   /** 本次死局是否已经播过失败音效（同一死局不重复播；重开 / 撤销后复位） */
   let overAnnounced = false;
+  /** 刚导入存档：在重新载入前冻结回写，避免旧的内存棋局把导入档覆盖掉 */
+  let importedPending = false;
   /**
    * 进入游戏时要弹的版本更新（启动时只读推导，不写存档）：
    * 老玩家升级 / 换版本后第一次进入游戏弹一次，只显示版本号变动。
@@ -233,6 +243,8 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   }
 
   function save(): void {
+    // 刚导入存档、还没重新载入时，不要用旧的内存棋局覆盖导入档
+    if (importedPending) return;
     try {
       kv.set(config.storageKey, JSON.stringify(serialize(state, config)));
     } catch {
@@ -392,6 +404,151 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     });
   }
 
+  /* ---------------- 存档导出 / 导入 ---------------- */
+
+  function reloadPage(): void {
+    try {
+      w?.location.reload();
+    } catch {
+      /* 某些内嵌浏览器不允许 reload；用户可以手动关掉页面再打开 */
+    }
+  }
+
+  function openImportedNotice(summary?: string): void {
+    overlay.show({
+      kind: 'save',
+      eyebrow: '存档 · 导入',
+      title: '已导入，等待重新载入',
+      text: `${summary ? `${summary}。` : ''}存档码已写入本机。重新载入页面后生效；在重新载入前不会再用旧棋局覆盖它。`,
+      actions: [
+        { label: '重新载入', primary: true, action: reloadPage },
+        { label: '稍后手动重开', action: () => {} },
+      ],
+    });
+  }
+
+  function openSaveMenu(): void {
+    overlay.show({
+      kind: 'save',
+      eyebrow: '存档 · 导出 / 导入',
+      title: '保存你的进度',
+      text: '导出：把最高分、图鉴和当前棋局打包成一段存档码。\n导入：用存档码覆盖本机的最高分、图鉴和棋局。换微信文件 / 换浏览器 / 换版本后，用这里搬进度。',
+      actions: [
+        { label: '导出存档', primary: true, action: openExport },
+        { label: '导入存档', action: openImport },
+        { label: '关闭', action: () => {} },
+      ],
+    });
+  }
+
+  async function copyText(area: HTMLTextAreaElement, note: HTMLElement): Promise<void> {
+    try {
+      const clipboard = w?.navigator?.clipboard;
+      if (clipboard?.writeText) {
+        await clipboard.writeText(area.value);
+        note.textContent = '已复制到剪贴板';
+        return;
+      }
+    } catch {
+      /* 剪贴板权限失败，退回 execCommand */
+    }
+    try {
+      area.focus();
+      area.select();
+      const ok = doc.execCommand('copy');
+      note.textContent = ok ? '已复制到剪贴板' : '请长按文本框全选复制';
+    } catch {
+      note.textContent = '请长按文本框全选复制';
+    }
+  }
+
+  function openExport(): void {
+    let code = '';
+    try {
+      code = encodeSaveBundle(readSaveBundle(kv, config.storageKey));
+    } catch {
+      code = '';
+    }
+    const wrap = el(doc, 'div', 'save');
+    const note = el(
+      doc,
+      'p',
+      'save__note',
+      `存档码已生成（${code.length} 字符）。长按文本框全选复制，或点下面的按钮。`,
+    );
+    const area = el(doc, 'textarea', 'save__code');
+    area.value = code;
+    area.readOnly = true;
+    area.rows = 5;
+    area.spellcheck = false;
+    area.setAttribute('aria-label', '存档码');
+    const row = el(doc, 'div', 'save__row');
+    const copy = el(doc, 'button', 'pill pill--ghost save__small', '复制存档码');
+    copy.type = 'button';
+    copy.addEventListener('click', () => {
+      void copyText(area, note);
+    });
+    row.append(copy);
+    wrap.append(note, area, row);
+    overlay.show({
+      kind: 'save',
+      eyebrow: '存档 · 导出',
+      title: '存档码',
+      text: '先复制保存好，再升级或换入口。',
+      extra: wrap,
+      actions: [
+        { label: '返回', action: openSaveMenu },
+        { label: '关闭', primary: true, action: () => {} },
+      ],
+    });
+    later(w, () => area.focus({ preventScroll: true }), 260);
+  }
+
+  function openImport(): void {
+    const wrap = el(doc, 'div', 'save');
+    const note = el(
+      doc,
+      'p',
+      'save__note',
+      '把导出的存档码粘贴到下面。导入会覆盖本机当前最高分、图鉴和棋局。',
+    );
+    const area = el(doc, 'textarea', 'save__code');
+    area.rows = 5;
+    area.placeholder = 'JWC1...';
+    area.spellcheck = false;
+    area.setAttribute('aria-label', '粘贴存档码');
+    const error = el(doc, 'p', 'save__error');
+    error.hidden = true;
+    const row = el(doc, 'div', 'save__row');
+    const apply = el(doc, 'button', 'pill pill--primary save__small', '导入存档');
+    apply.type = 'button';
+    apply.addEventListener('click', () => {
+      const bundle = decodeSaveBundle(area.value);
+      if (!bundle) {
+        error.hidden = false;
+        error.textContent = '存档码无效：请确认完整复制（以 JWC1. 开头），不要带多余文字。';
+        return;
+      }
+      writeSaveBundle(kv, config.storageKey, bundle);
+      importedPending = true;
+      openImportedNotice(summarizeSaveBundle(bundle));
+    });
+    row.append(apply);
+    wrap.append(note, area, error, row);
+    overlay.show({
+      kind: 'save',
+      eyebrow: '存档 · 导入',
+      title: '粘贴存档码',
+      text: '只读写本机的最高分、图鉴和棋局，不联网。',
+      extra: wrap,
+      actions: [
+        { label: '返回', action: openSaveMenu },
+        { label: '关闭', primary: true, action: () => {} },
+      ],
+    });
+    later(w, () => area.focus({ preventScroll: true }), 260);
+  }
+
   function requestNewGame(): void {
     if (busy) {
       whenIdle(requestNewGame);
@@ -506,6 +663,10 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
 
   function input(dir: Direction): void {
     if (destroyed) return;
+    if (importedPending) {
+      openImportedNotice();
+      return;
+    }
     // 开场界面还没收起时，方向键 / 滑动都不推棋盘
     if (intro?.isOpen()) return;
     if (dialogOpen()) return;
@@ -745,6 +906,7 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     intro: need<HTMLElement>(root, '#intro'),
     startButton: need<HTMLButtonElement>(root, '#intro-start'),
     guideButton: need<HTMLButtonElement>(root, '#intro-guide'),
+    saveButton: need<HTMLButtonElement>(root, '#intro-save'),
     bestEl: need<HTMLElement>(root, '#intro-best'),
     codexEl: need<HTMLElement>(root, '#intro-codex'),
     onStart: enterGame,
@@ -752,6 +914,8 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
       // 「玩法说明」也视为进入游戏：解锁音频、处理版本更新 / 读档死局，再把合成链抽屉叠在上面
       enterGame(() => sheet.open('chain'));
     },
+    onSave: openSaveMenu,
+    canEnter: () => !overlay.isOpen(),
   });
   intro.setStats({
     best: Math.max(best, state.score),
@@ -778,7 +942,15 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   function onAbout(): void {
     // 「关于」入口在图鉴抽屉底部：先收起抽屉，再在它上面弹说明层
     if (sheet.isOpen()) sheet.close();
-    overlay.show(buildAbout());
+    const content = buildAbout();
+    overlay.show({
+      ...content,
+      actions: [
+        ...content.actions.filter((action) => action.label !== '关闭'),
+        { label: '存档导出 / 导入', action: () => openSaveMenu() },
+        { label: '关闭', primary: true, action: () => {} },
+      ],
+    });
   }
   function onSound(): void {
     audio.setEnabled(!audio.enabled);

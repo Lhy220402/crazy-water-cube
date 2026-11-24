@@ -6,7 +6,16 @@ import { cancelTimer, el, later } from './dom.ts';
 
 const OVERLAY_MS = 240;
 
-export type OverlayKind = 'win' | 'truewin' | 'myth' | 'over' | 'confirm' | 'lore' | 'about' | 'update';
+export type OverlayKind =
+  | 'win'
+  | 'truewin'
+  | 'myth'
+  | 'over'
+  | 'confirm'
+  | 'lore'
+  | 'about'
+  | 'update'
+  | 'save';
 
 export interface OverlayAction {
   label: string;
@@ -23,6 +32,8 @@ export interface OverlayContent {
   text: string;
   stats?: { label: string; value: string }[];
   actions: OverlayAction[];
+  /** 正文下方的自定义内容（存档导入的文本框等）；每次 show 时重新挂载 */
+  extra?: HTMLElement;
   burst?: boolean;
   focus?: 'primary' | 'first';
   /** 关闭后回调（版本更新弹窗用它接续「进入游戏」流程；遮罩 / Esc 关闭也会触发） */
@@ -47,11 +58,12 @@ export interface OverlayOptions {
   text: HTMLElement;
   stats: HTMLElement;
   actions: HTMLElement;
+  extra: HTMLElement;
   burst: HTMLElement;
 }
 
 export function createOverlay(opts: OverlayOptions): OverlayView {
-  const { doc, w, rng, overlay, scrim, eyebrow, title, text, stats, actions, burst } = opts;
+  const { doc, w, rng, overlay, scrim, eyebrow, title, text, stats, actions, extra, burst } = opts;
   let kind: OverlayKind | null = null;
   let hideTimer: number | null = null;
   let focusBefore: HTMLElement | null = null;
@@ -100,6 +112,13 @@ export function createOverlay(opts: OverlayOptions): OverlayView {
     title.classList.toggle('panel__title--myth', content.kind === 'myth');
     title.classList.toggle('panel__title--codex', content.kind === 'lore');
     text.textContent = content.text;
+
+    extra.textContent = '';
+    extra.hidden = true;
+    if (content.extra) {
+      extra.hidden = false;
+      extra.append(content.extra);
+    }
 
     stats.textContent = '';
     const items = content.stats ?? [];
@@ -156,6 +175,8 @@ export function createOverlay(opts: OverlayOptions): OverlayView {
       hideTimer = null;
       overlay.hidden = true;
       burst.textContent = '';
+      extra.textContent = '';
+      extra.hidden = true;
     }, OVERLAY_MS);
     if (focusBefore?.isConnected) focusBefore.focus({ preventScroll: true });
     focusBefore = null;

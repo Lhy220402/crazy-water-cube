@@ -32,16 +32,21 @@ export interface IntroOptions {
   intro: HTMLElement;
   startButton: HTMLButtonElement;
   guideButton: HTMLButtonElement;
+  saveButton: HTMLButtonElement;
   bestEl: HTMLElement;
   codexEl: HTMLElement;
   /** 进入游戏（关掉开场界面之后） */
   onStart(): void;
   /** 打开玩法说明（先收起开场界面） */
   onGuide(): void;
+  /** 打开存档导入 / 导出（不收起开场界面，弹层盖在上面） */
+  onSave(): void;
+  /** Enter / Space 是否允许进入游戏（弹层打开时要拦住） */
+  canEnter?(): boolean;
 }
 
 export function createIntro(opts: IntroOptions): IntroView {
-  const { doc, w, intro, startButton, guideButton, bestEl, codexEl, onStart, onGuide } = opts;
+  const { doc, w, intro, startButton, guideButton, saveButton, bestEl, codexEl, onStart, onGuide, onSave } = opts;
   let open = true;
   let leaveTimer: number | null = null;
 
@@ -80,9 +85,15 @@ export function createIntro(opts: IntroOptions): IntroView {
     onGuide();
   }
 
+  function onSaveClick(): void {
+    if (!open) return;
+    onSave();
+  }
+
   function onKey(event: KeyboardEvent): void {
     if (!open) return;
     if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+      if (opts.canEnter && !opts.canEnter()) return;
       event.preventDefault();
       enter();
     }
@@ -90,6 +101,7 @@ export function createIntro(opts: IntroOptions): IntroView {
 
   startButton.addEventListener('click', onStartClick);
   guideButton.addEventListener('click', onGuideClick);
+  saveButton.addEventListener('click', onSaveClick);
   doc.addEventListener('keydown', onKey);
   startButton.focus({ preventScroll: true });
 
@@ -101,6 +113,7 @@ export function createIntro(opts: IntroOptions): IntroView {
       if (leaveTimer !== null) cancelTimer(w, leaveTimer);
       startButton.removeEventListener('click', onStartClick);
       guideButton.removeEventListener('click', onGuideClick);
+      saveButton.removeEventListener('click', onSaveClick);
       doc.removeEventListener('keydown', onKey);
     },
   };
