@@ -130,7 +130,7 @@ export const CODEX_ENTRIES: readonly CodexEntry[] = [
 ];
 
 /**
- * 传奇词条池（8 条，v3.0.1）。不进上面的随机池，也不会从 OLD FIVE / 普通词条合成里抽到：
+ * 传奇词条池（9 条，v3.3.0）。不进上面的随机池，也不会从 OLD FIVE / 普通词条合成里抽到：
  * 唯一入口是「记赢赢 × 记赢赢」相撞后从这里随机抽一条。
  * 全部为 myth 稀有度、权重均匀（默认 1），图鉴里单独分区。
  */
@@ -143,6 +143,8 @@ export const MYTH_ENTRIES: readonly CodexEntry[] = [
   { id: 'zhongshu', name: '种树', rarity: 'myth', weight: 1, hue: 128, hue2: 108 }, // 树青
   { id: 'guojing', name: '国晶', rarity: 'myth', weight: 1, hue: 260, hue2: 240 }, // 晶紫
   { id: 'chuncheng', name: '春橙', rarity: 'myth', weight: 1, hue: 18, hue2: 36 }, // 春橙
+  // v3.3.0 新增 1 条（用户原文：雪红 · 传奇 · “我认识个雪峰”）
+  { id: 'xuehong', name: '雪红', rarity: 'myth', weight: 1, hue: 352, hue2: 334 }, // 雪里红
 ];
 
 /**

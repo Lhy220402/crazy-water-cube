@@ -86,7 +86,12 @@ check(
   html.includes('传奇词条 · 随机抽取') && html.includes('传奇 · 现世'),
   '缺少传奇抽取配方 / 现世文案',
 );
-check(html.includes('3.2.0'), '缺少 v3.2.0 版本号');
+check(html.includes('3.3.0'), '缺少 v3.3.0 版本号');
+// v3.3：新增传奇词条雪红（解释保留双引号）
+check(
+  html.includes('雪红') && html.includes('“我认识个雪峰”'),
+  '缺少 v3.3 新增传奇词条（雪红）',
+);
 check(
   html.includes('tile__aura') && html.includes('heart-rise'),
   '缺少稀有度光效 / 爱心粒子',

@@ -7,7 +7,7 @@
  *
  * 内容约定（用户 2026-11-24 确认）：
  *   - 最高分 91780，当前得分 61312、640 步；
- *   - 图鉴 40/48：33 条随机池稀有/传说 + 7 条特殊产物全收录；8 条传奇留空（保留现世悬念）；
+ *   - 图鉴 40/49：33 条随机池稀有/传说 + 7 条特殊产物全收录；9 条传奇留空（保留现世悬念）；
  *   - 棋局 13 格：2 枚记赢赢 + 7 种特殊产物 + 稀有/传说词条混排，**不放 rank 6 传奇方块**；
  *   - won / trueWon 均为 true，带记赢赢的永久 ×2 增益，与实际真通关后的状态一致。
  *
@@ -131,7 +131,7 @@ async function main(): Promise<void> {
   console.log(`✓ 补偿存档码已写入 ${out}`);
   console.log(`  最高分 ${bundle.best} · 当前分 ${state.score} · ${state.moves} 步`);
   console.log(
-    `  图鉴 ${Object.keys(codex).length}/48（传奇留空）· 棋盘 ${state.cells.filter(Boolean).length}/16 格`,
+    `  图鉴 ${Object.keys(codex).length}/49（传奇留空）· 棋盘 ${state.cells.filter(Boolean).length}/16 格`,
   );
   console.log(`  存档码 ${code.length} 字符`);
 }

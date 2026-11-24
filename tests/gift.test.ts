@@ -50,7 +50,7 @@ test('补偿存档：最高分 / 图鉴 / 棋盘内容符合约定', () => {
   const myths = entries.filter((entry) => entry.rarity === 'myth');
 
   assert.equal(nonMyth.length, 40, '随机池 33 + 特殊产物 7');
-  assert.equal(myths.length, 8);
+  assert.equal(myths.length, 9);
   assert.equal(Object.keys(codex).length, 40);
   for (const entry of nonMyth) {
     assert.ok((codex[entry.id] ?? 0) > 0, `图鉴应收录 ${entry.name}`);

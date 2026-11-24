@@ -152,7 +152,7 @@ function saved(
 
 const EMPTY16: (number | null)[] = new Array(16).fill(null);
 
-/** 图鉴 48 条全收录（随机池 33 + 特殊产物 7 + 传奇 8），用于测进度条与「未完待续」 */
+/** 图鉴 49 条全收录（随机池 33 + 特殊产物 7 + 传奇 9），用于测进度条与「未完待续」 */
 const ALL_CODEX_IDS = [
   'sui', 'eyu-qi', 'sui-ring', 'eyu-shi-jun', 'ji', 'bayi', 'hongmei', 'jinshan', 'fuli',
   'li', 'na', 'xiaoming', 'yanzi', 'doubao', 'biao', 'huicheng', 'xiaoyu', 'gang', 'weihai',
@@ -160,7 +160,7 @@ const ALL_CODEX_IDS = [
   'zuolun', 'yu-zi', 'he-si',
   'sui-jun', 'sui-jun-ring', 'shui-gang', 'lina', 'ji-ying-ying', 'miao', 'ji-hui-cheng',
   'meihui', 'zhaojun', 'xiangjun', 'xiaofeng', 'yingtao', 'jiasheng', '666', 'hongying',
-  'wangxuedi', 'zhongshu', 'guojing', 'chuncheng',
+  'wangxuedi', 'zhongshu', 'guojing', 'chuncheng', 'xuehong',
 ];
 const ALL_CODEX: Record<string, number> = Object.fromEntries(ALL_CODEX_IDS.map((id) => [id, 1]));
 
@@ -360,14 +360,14 @@ test('首次抽到词条：弹解释卡、写入图鉴，名字此刻才可见',
 
 test('重复抽到已收录词条不重复弹解释层', async () => {
   const h = await boot(saved([4, 4, ...EMPTY16.slice(2)], { won: true }), ALL_CODEX);
-  assert.equal(Object.keys(h.app.codex).length, 48, '读档应恢复全部收录（含特殊产物与传奇）');
+  assert.equal(Object.keys(h.app.codex).length, 49, '读档应恢复全部收录（含特殊产物与传奇）');
   h.app.move('left');
   await settle(h);
   await sleep(120);
   assert.equal(h.$('#overlay').hidden, true, '重复词条不弹解释层');
   const counts = Object.values(h.app.codex).reduce((sum, n) => sum + n, 0);
-  assert.equal(counts, 49, '重复抽到也要累加出现次数');
-  assert.equal(Object.keys(h.app.codex).length, 48);
+  assert.equal(counts, 50, '重复抽到也要累加出现次数');
+  assert.equal(Object.keys(h.app.codex).length, 49);
   h.close();
 });
 
@@ -428,6 +428,7 @@ test('图鉴词条页：没收集前完全空白、不剧透名字和数量', as
     '种树',
     '国晶',
     '春橙',
+    '雪红',
   ]) {
     assert.equal(text.includes(name), false, `不能剧透「${name}」`);
   }
@@ -571,7 +572,7 @@ test('图鉴合成链页：传奇整节在记赢赢首次收集前完全隐藏',
   assert.match(afterText, /传奇词条 · 随机抽取/);
   assert.match(afterText, /两枚传奇相撞/);
   // 未收集传奇词条时产物仍是问号 mini，不剧透传奇名字
-  for (const name of ['煤灰', '昭君', '666', '🍒']) {
+  for (const name of ['煤灰', '昭君', '666', '🍒', '雪红']) {
     assert.equal(afterText.includes(name), false, `传奇未现世前不能剧透「${name}」`);
   }
   after.close();
@@ -1380,7 +1381,7 @@ test('图鉴传奇单独分区：传奇卡片与记赢赢金虹卡片，未集�
   assert.equal(jyy.querySelector('.card__meta .card__rarity')?.textContent, '特殊合成');
 
   const text = h.$('#codex').textContent ?? '';
-  assert.equal(text.includes('48'), false, '未集齐时不显示总数');
+  assert.equal(text.includes('49'), false, '未集齐时不显示总数');
   assert.equal(/\d+\s*\/\s*\d+/.test(text), false);
   h.close();
 });
@@ -1440,7 +1441,7 @@ test('v3.0.2 旧档迁移：保留最高分 / 图鉴进度，只把 rank 6 上�
   assert.equal(h.app.state.trueWon, true);
   assert.equal(h.app.state.buffs.length, 1);
   assert.equal(h.$('#best').textContent, '4096');
-  // 第一枚旧传奇 → 随机正确传奇（0.3 × 8 = 2.4 → 666）；已是正确传奇的不变；rank 5 的旧词条不动
+  // 第一枚旧传奇 → 随机正确传奇（0.3 × 9 = 2.7 → 666）；已是正确传奇的不变；rank 5 的旧词条不动
   const mythTiles = h.$('#tiles').querySelectorAll<HTMLElement>('.tile[data-rank="6"]');
   assert.equal(mythTiles.length, 2);
   assert.equal(mythTiles[0]!.dataset.entry, '666');
@@ -1480,7 +1481,7 @@ test('隋 / 李娜没有解释：首次收录不弹解释卡，图鉴卡片不�
 });
 
 test('图鉴收集进度条：未集齐只给比例，集齐后显示总数 + 未完待续', async () => {
-  // 部分收录：进度条 1/48 ≈ 2%，但不显示 x/y 总数
+  // 部分收录：进度条 1/49 ≈ 2%，但不显示 x/y 总数
   const partial = await boot(undefined, { sui: 1 });
   partial.app.openGuide('codex');
   await sleep(30);
@@ -1489,24 +1490,24 @@ test('图鉴收集进度条：未集齐只给比例，集齐后显示总数 + �
   assert.equal(bar.getAttribute('aria-valuenow'), '1');
   assert.equal(partial.$('#codex').querySelector<HTMLElement>('.codex__bar-fill')?.style.width, '2%');
   const partialText = partial.$('#codex').textContent ?? '';
-  assert.equal(partialText.includes('48'), false, '未集齐时不显示总数');
+  assert.equal(partialText.includes('49'), false, '未集齐时不显示总数');
   assert.equal(/\d+\s*\/\s*\d+/.test(partialText), false);
   assert.equal(partial.$('#codex').querySelectorAll('.card').length, 1);
   assert.equal(partial.$('#codex').querySelectorAll('.mystery').length, 2, '普通词条 + 传奇分区各一张问号卡');
   partial.close();
 
-  // 全部收录：进度条满、标题显示共 48 条、底部「未完待续」、传奇单独分区
+  // 全部收录：进度条满、标题显示共 49 条、底部「未完待续」、传奇单独分区
   const full = await boot(undefined, ALL_CODEX);
   full.app.openGuide('codex');
   await sleep(30);
   const fill = full.$('#codex').querySelector<HTMLElement>('.codex__bar-fill');
   assert.equal(fill?.style.width, '100%');
   const fullText = full.$('#codex').textContent ?? '';
-  assert.match(fullText, /全部收录 · 共 48 条/);
+  assert.match(fullText, /全部收录 · 共 49 条/);
   assert.match(fullText, /未完待续/);
   assert.match(fullText, /传奇/);
-  assert.equal(full.$('#codex').querySelectorAll('.card').length, 48);
-  assert.equal(full.$('#codex').querySelectorAll('.codex__grid--myth .card').length, 8);
+  assert.equal(full.$('#codex').querySelectorAll('.card').length, 49);
+  assert.equal(full.$('#codex').querySelectorAll('.codex__grid--myth .card').length, 9);
   assert.equal(full.$('#codex').querySelectorAll('.mystery').length, 0);
   full.close();
 });
@@ -1682,15 +1683,15 @@ test('开发者工具：图鉴 / 分数 / 加任意词条 / 通关标记 / 清�
   const extra = h.$('#overlay-extra');
   const statusEl = extra.querySelector<HTMLElement>('.dev__status');
   assert.ok(statusEl);
-  assert.match(statusEl.textContent ?? '', /图鉴 0\/48/);
+  assert.match(statusEl.textContent ?? '', /图鉴 0\/49/);
 
   clickButton(extra, '图鉴全收集');
-  assert.equal(Object.keys(h.app.codex).length, 48, '图鉴应补满 48 条');
+  assert.equal(Object.keys(h.app.codex).length, 49, '图鉴应补满 49 条');
   assert.equal(
     Object.keys(JSON.parse(h.win.localStorage.getItem('jun2048.codex') ?? '{}')).length,
-    48,
+    49,
   );
-  assert.match(statusEl.textContent ?? '', /图鉴 48\/48/);
+  assert.match(statusEl.textContent ?? '', /图鉴 49\/49/);
 
   const bestInput = extra.querySelector<HTMLInputElement>('input[aria-label="最高分"]');
   assert.ok(bestInput);
@@ -1740,6 +1741,6 @@ test('开发者工具：图鉴 / 分数 / 加任意词条 / 通关标记 / 清�
   assert.equal(h.app.state.buffs.length, 0);
   clickButton(extra, '清空图鉴');
   assert.equal(Object.keys(h.app.codex).length, 0);
-  assert.match(statusEl.textContent ?? '', /图鉴 0\/48/);
+  assert.match(statusEl.textContent ?? '', /图鉴 0\/49/);
   h.close();
 });

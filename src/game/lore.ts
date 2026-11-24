@@ -55,6 +55,8 @@ export const LORE: Readonly<Record<string, string>> = {
   zhongshu: '“干掉一班！”（物理意义上）',
   guojing: '“也没啥退步空间了”',
   chuncheng: '“有些孩子啊”',
+  // v3.3.0 新增 1 条传奇（用户原文，保留双引号）
+  xuehong: '“我认识个雪峰”',
   // 特殊合成产物
   'sui-jun': '水里的军队',
   'sui-jun-ring': '666 一家齐上了',

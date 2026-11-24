@@ -410,14 +410,14 @@ test('特殊配方：Li + Na → 李娜（+128，×2/8步，和水军同一梯�
   assert.equal(followUp.merges[0]!.gained, 64);
 });
 
-test('图鉴规模与解释文案：随机池 33 + 特殊产物 7 + 传奇 8 = 48 条', () => {
+test('图鉴规模与解释文案：随机池 33 + 特殊产物 7 + 传奇 9 = 49 条', () => {
   const config = createConfig();
   assert.equal(config.codex!.entries.length, 33);
   assert.equal(config.codex!.specials.length, 7);
-  assert.equal(config.codex!.myths!.length, 8);
+  assert.equal(config.codex!.myths!.length, 9);
   assert.equal(config.mythRank, 6);
   const entries = allEntries(config);
-  assert.equal(entries.length, 48);
+  assert.equal(entries.length, 49);
   // v3.0.1 修正：这三条是传说、象郡是稀有，全部回到普通抽取池
   assert.equal(entryById(config, 'meihui')!.rarity, 'legend');
   assert.equal(entryById(config, 'zhaojun')!.rarity, 'legend');
@@ -492,6 +492,8 @@ test('图鉴规模与解释文案：随机池 33 + 特殊产物 7 + 传奇 8 = 4
   assert.equal(LORE.zhongshu, '“干掉一班！”（物理意义上）');
   assert.equal(LORE.guojing, '“也没啥退步空间了”');
   assert.equal(LORE.chuncheng, '“有些孩子啊”');
+  // v3.3.0 新增传奇：保留双引号
+  assert.equal(LORE.xuehong, '“我认识个雪峰”');
 });
 
 test('v2.4：随机池不再有普通词条，隋升为稀有，稀有/传说光效有数据', () => {
@@ -854,7 +856,7 @@ test('传奇机制：传奇 × 传奇 再抽传奇；传奇不能和普通词条
   assert.equal(mixed.codexDraws.length, 0);
 });
 
-test('传奇池 8 条都能抽到（100 等分）', () => {
+test('传奇池 9 条都能抽到（100 等分）', () => {
   const config = createConfig();
   const seen = new Set<string>();
   for (let i = 0; i < 2400; i += 1) {
