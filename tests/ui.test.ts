@@ -55,6 +55,8 @@ async function boot(
     version?: string | null;
     /** 固定随机源，让「抽到哪条词条」等断言可复现 */
     rng?: () => number;
+    /** 开发者模式 key：'on' / 'off' / 其它（模拟已解锁并重启） */
+    dev?: string;
   } = {},
 ): Promise<Harness> {
   const virtualConsole = new VirtualConsole();
@@ -77,6 +79,7 @@ async function boot(
       if (theme !== undefined) window.localStorage.setItem('jun2048.theme', theme);
       if (options.best !== undefined) window.localStorage.setItem('jun2048.best', String(options.best));
       if (options.sound !== undefined) window.localStorage.setItem('jun2048.sound', options.sound);
+      if (options.dev !== undefined) window.localStorage.setItem('jun2048.dev', options.dev);
       // 默认视为「当前版本已经打开过」；测版本更新弹窗时传 version: '2.2.2' 或 null
       if (options.version !== null) {
         window.localStorage.setItem('jun2048.version', options.version ?? GAME_VERSION);
@@ -1599,5 +1602,144 @@ test('存档导入：无效存档码报错，不写入任何存档', async () =>
   assert.match(error.textContent ?? '', /存档码无效/);
   assert.equal(h.win.localStorage.getItem('jun2048.best'), null);
   assert.equal(h.win.localStorage.getItem('jun2048.codex'), null);
+  h.close();
+});
+
+/* ------------------------------------------------------------------ */
+/* v3.2 开发者模式                                                      */
+/* ------------------------------------------------------------------ */
+
+test('开发者模式：存档导入框魔法码解锁，开关出现且不覆盖已有存档', async () => {
+  const h = await boot(undefined, undefined, undefined, { skipIntro: false });
+  assert.equal(h.$('#dev-bar').hidden, true, '未解锁时开发者开关应隐藏');
+  h.$('#intro-save').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(30);
+  const importButton = Array.from(
+    h.$('#overlay-actions').querySelectorAll<HTMLButtonElement>('button'),
+  ).find((button) => button.textContent === '导入存档');
+  assert.ok(importButton);
+  importButton.dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(30);
+  const beforeGame = h.win.localStorage.getItem('jun2048');
+  const beforeBest = h.win.localStorage.getItem('jun2048.best');
+  const beforeCodex = h.win.localStorage.getItem('jun2048.codex');
+  const area = h.$('#overlay-extra').querySelector<HTMLTextAreaElement>('textarea.save__code');
+  assert.ok(area);
+  area.value = '  JWC1.DEV-2048  ';
+  const apply = Array.from(
+    h.$('#overlay-extra').querySelectorAll<HTMLButtonElement>('button'),
+  ).find((button) => button.textContent === '导入存档');
+  assert.ok(apply);
+  apply.dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(40);
+  assert.equal(h.win.localStorage.getItem('jun2048.dev'), 'on');
+  assert.equal(h.win.localStorage.getItem('jun2048'), beforeGame, '魔法码不应覆盖棋局');
+  assert.equal(h.win.localStorage.getItem('jun2048.best'), beforeBest, '魔法码不应改最高分');
+  assert.equal(h.win.localStorage.getItem('jun2048.codex'), beforeCodex, '魔法码不应改图鉴');
+  assert.match(h.$('#overlay-title').textContent ?? '', /开发者模式已开启/);
+  assert.equal(h.$('#dev-bar').hidden, false, '解锁后开关出现');
+  assert.equal(h.$('#dev-toggle').getAttribute('aria-checked'), 'true');
+  assert.equal(h.$('#dev-open').hidden, false);
+  h.close();
+});
+
+test('开发者模式：开关状态持久化，关掉后开关仍保留', async () => {
+  const h = await boot(undefined, undefined, undefined, { dev: 'off' });
+  assert.equal(h.$('#dev-bar').hidden, false, '解锁过（off）也要一直显示开关');
+  assert.equal(h.$('#dev-toggle').getAttribute('aria-checked'), 'false');
+  assert.equal(h.$('#dev-open').hidden, true, '关闭时不显示工具入口');
+  h.$('#dev-toggle').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  assert.equal(h.win.localStorage.getItem('jun2048.dev'), 'on');
+  assert.equal(h.$('#dev-toggle').getAttribute('aria-checked'), 'true');
+  assert.equal(h.$('#dev-open').hidden, false);
+  h.$('#dev-toggle').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  assert.equal(h.win.localStorage.getItem('jun2048.dev'), 'off');
+  assert.equal(h.$('#dev-open').hidden, true);
+  h.$('#dev-open').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(30);
+  assert.equal(h.$('#overlay').hidden, true, '开关关闭时不应打开开发者工具');
+  h.close();
+});
+
+test('开发者工具：图鉴 / 分数 / 加任意词条 / 通关标记 / 清空', async () => {
+  const h = await boot(
+    saved([0, 0, ...EMPTY16.slice(2)], { score: 128, moves: 12 }),
+    undefined,
+    undefined,
+    { dev: 'on' },
+  );
+  const clickButton = (root: ParentNode, label: string): void => {
+    const button = Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(
+      (item) => item.textContent === label,
+    );
+    assert.ok(button, `缺少按钮：${label}`);
+    button.dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  };
+  h.$('#dev-open').dispatchEvent(new h.win.MouseEvent('click', { bubbles: true }));
+  await sleep(40);
+  assert.equal(h.$('#overlay').dataset.kind, 'dev');
+  assert.equal(h.$('#overlay-title').textContent, '开发者工具');
+  const extra = h.$('#overlay-extra');
+  const statusEl = extra.querySelector<HTMLElement>('.dev__status');
+  assert.ok(statusEl);
+  assert.match(statusEl.textContent ?? '', /图鉴 0\/48/);
+
+  clickButton(extra, '图鉴全收集');
+  assert.equal(Object.keys(h.app.codex).length, 48, '图鉴应补满 48 条');
+  assert.equal(
+    Object.keys(JSON.parse(h.win.localStorage.getItem('jun2048.codex') ?? '{}')).length,
+    48,
+  );
+  assert.match(statusEl.textContent ?? '', /图鉴 48\/48/);
+
+  const bestInput = extra.querySelector<HTMLInputElement>('input[aria-label="最高分"]');
+  assert.ok(bestInput);
+  bestInput.value = '88888';
+  clickButton(extra, '设置最高分');
+  assert.equal(h.app.best, 88888);
+  assert.equal(h.$('#best').textContent, '88888');
+  assert.equal(h.win.localStorage.getItem('jun2048.best'), '88888');
+
+  const scoreInput = extra.querySelector<HTMLInputElement>('input[aria-label="当前分"]');
+  assert.ok(scoreInput);
+  scoreInput.value = '66666';
+  clickButton(extra, '设置当前分');
+  assert.equal(h.app.state.score, 66666);
+  assert.equal(h.$('#score').textContent, '66666');
+
+  // 任意词条（含未收录的传奇）可以直接加到棋盘
+  const select = extra.querySelector<HTMLSelectElement>('select.dev__select');
+  assert.ok(select);
+  select.value = 'hongying';
+  clickButton(extra, '加入选中词条');
+  const mythTile = h.$('#tiles').querySelector<HTMLElement>('.tile[data-entry="hongying"]');
+  assert.ok(mythTile, '棋盘上应出现红鹰');
+  assert.equal(mythTile.dataset.rank, '6');
+
+  const before = h.app.state.cells.filter(Boolean).length;
+  clickButton(extra, '加两枚记赢赢');
+  assert.equal(h.app.state.cells.filter(Boolean).length, before + 2);
+  assert.equal(
+    h.app.state.cells.filter((tile) => tile?.variant === 'ji-ying-ying').length,
+    2,
+  );
+
+  clickButton(extra, '设为真通关');
+  assert.equal(h.app.state.trueWon, true);
+  clickButton(extra, '设为假通关');
+  assert.equal(h.app.state.won, true);
+  clickButton(extra, '取消真通关');
+  assert.equal(h.app.state.trueWon, false);
+  clickButton(extra, '取消假通关');
+  assert.equal(h.app.state.won, false);
+  const savedGame = JSON.parse(h.win.localStorage.getItem('jun2048') ?? '{}');
+  assert.equal(savedGame.trueWon, false);
+  assert.equal(savedGame.won, false);
+
+  clickButton(extra, '清空增益');
+  assert.equal(h.app.state.buffs.length, 0);
+  clickButton(extra, '清空图鉴');
+  assert.equal(Object.keys(h.app.codex).length, 0);
+  assert.match(statusEl.textContent ?? '', /图鉴 0\/48/);
   h.close();
 });

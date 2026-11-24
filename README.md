@@ -4,9 +4,9 @@
 每次打开先看到「疯狂水立方」开场界面，点开始（或按 Enter / Space）进入棋局。
 合出 OLD FIVE 只是**假通关**——真正的通关门道，藏在词条之间，留给你自己发现。
 
-## 下载（v3.1.0）
+## 下载（v3.2.0）
 
-- **单文件版**：下载 `疯狂水立方.html`（约 154.7 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
+- **单文件版**：下载 `疯狂水立方.html`（约 163.8 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
 - **在线版（GitHub Pages）**：[https://idealismo10.github.io/crazy-water-cube/](https://idealismo10.github.io/crazy-water-cube/)，内容与单文件版相同。
 - **发行版**：[GitHub Releases](https://github.com/idealismo10/crazy-water-cube/releases) · [Gitee 发行版](https://gitee.com/idealismo10/crazy-water-cube/releases)（含单文件版、源码包、玩法说明、SHA256 校验和）。
 - **源码**：发行版里的 `疯狂水立方-source.tar.gz`，或 `git clone` 本仓库；`npm install && npm run build` 重新打包。
@@ -83,7 +83,7 @@
 - 从 v3.0.0 升级时，旧存档里被误标成传奇的方块会**随机替换**为当前正确的传奇；
   最高分、分数、步数、通关、增益与图鉴收录（包括这 4 条现在合法的传说 / 稀有记录）都会保留。
 - **版本更新提示**：更新到新版本后第一次进入游戏会弹一次「版本已更新」，只显示版本号变化
-  （如 `v3.0.2 → v3.1.0`）；新玩家不弹，同一版本不会重复弹。记录存在 `jun2048.version`。
+  （如 `v3.1.0 → v3.2.0`）；新玩家不弹，同一版本不会重复弹。记录存在 `jun2048.version`。
 - 底栏「🔊 / 🔇」按钮开关合成音效与失败音效，偏好会被记住（`jun2048.sound`）；「◐」按钮切换外观
   （跟随系统 → 浅色 → 深色，记住偏好）。
 - **关于**：入口收在图鉴抽屉底部（低频功能，避免误触），内容是玩法简介 + Gitee / GitHub 两个仓库链接；
@@ -132,7 +132,7 @@ src/
   main.ts       入口
 index.html      页面骨架（含开场界面与内联占位）
 scripts/        build / dev / verify-dist / pack / audio / pages
-tests/          engine.test.ts（43）+ save.test.ts（5）+ audio.test.ts（3）+ version.test.ts（3）+ ui.test.ts（56）
+tests/          engine.test.ts（43）+ save.test.ts（5）+ audio.test.ts（3）+ version.test.ts（3）+ dev.test.ts（3）+ gift.test.ts（2）+ ui.test.ts（59）
 docs/           交接文档 / 新对话提示词 / 设计文档
 ```
 
@@ -142,8 +142,9 @@ docs/           交接文档 / 新对话提示词 / 设计文档
 npm install
 npm run build     # → dist/2048.html
 npm run dev       # 本地预览，手机同网络可访问
-npm run verify    # 类型检查 + 110 测试 + 单文件自检
+npm run verify    # 类型检查 + 118 测试 + 单文件自检
 npm run pack      # 发布到 /sdcard/Download/DSH-Go/
+npm run gift-save # 生成补偿存档码 → release/gift-save.txt
 npm run pages     # 单文件版发布到 GitHub Pages（gh-pages 分支）
 ```
 
@@ -214,6 +215,9 @@ npm run pages     # 单文件版发布到 GitHub Pages（gh-pages 分支）
   最高分、分数、步数、通关、增益、图鉴收录都保留；迁移后立刻回写，之后不再变化。
 - v3.1.0 增加「存档导入 / 导出」：最高分、图鉴和当前棋局可以打包成 `JWC1.` 存档码，
   换微信文件 / 换浏览器 / 换入口后粘贴回来；导入会覆盖本机这三项进度。
+- v3.2.0 增加离线「补偿存档」生成器（`npm run gift-save`，最高分 + 稀有/传说图鉴 + 记赢赢棋局），
+  以及本机开发者模式：在存档导入框输入魔法码 `JWC1.DEV-2048` 解锁，游戏界面出现「开发者模式」开关，
+  开关状态记在 `jun2048.dev`（只影响本机，不进存档码）；开发者工具可改图鉴 / 分数 / 棋局 / 通关标记 / 增益。
 - **微信文件预览的存储不稳**：微信常把每个新发的 HTML 当成新的临时入口，localStorage 可能跟着换；
   升级 / 转发前先在旧版「导出存档」，新版「导入存档」。旧版没有导出功能时，已丢失的进度无法凭空恢复。
 - 两个仓库已设为公开；GitHub Pages 在线版随版本刷新。

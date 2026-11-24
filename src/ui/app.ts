@@ -6,13 +6,15 @@ import {
   DEFAULT_CONFIG,
   allEntries,
   entryById,
+  mythEntries,
   type GameConfig,
 } from '../game/config.ts';
-import { RARITIES, entryText, type CodexEntry } from '../game/codex.ts';
+import { RARITIES, drawCodexEntry, entryText, type CodexEntry } from '../game/codex.ts';
 import { buffMultiplier } from '../game/buffs.ts';
 import { specialProduct } from '../game/recipes.ts';
 import { loreOf } from '../game/lore.ts';
 import {
+  canMove,
   cloneState,
   createGame,
   deserialize,
@@ -41,6 +43,17 @@ import {
   summarizeSaveBundle,
   writeSaveBundle,
 } from './save-transfer.ts';
+import {
+  buildDevPanel,
+  createDevBar,
+  isDevSaveCode,
+  readDevMode,
+  writeDevMode,
+  type DevActions,
+  type DevBarView,
+  type DevMode,
+  type DevStatus,
+} from './dev.ts';
 import { GAME_VERSION, LEGACY_VERSION } from '../game/meta.ts';
 import {
   detectVersionChange,
@@ -152,6 +165,9 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   let overAnnounced = false;
   /** 刚导入存档：在重新载入前冻结回写，避免旧的内存棋局把导入档覆盖掉 */
   let importedPending = false;
+  /** 开发者模式：解锁 / 开关状态存 jun2048.dev（第 7 个 key，只给调试用，不进存档码） */
+  let devMode: DevMode = readDevMode(kv, config.storageKey);
+  let devBarView: DevBarView | null = null;
   /**
    * 进入游戏时要弹的版本更新（启动时只读推导，不写存档）：
    * 老玩家升级 / 换版本后第一次进入游戏弹一次，只显示版本号变动。
@@ -175,6 +191,9 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   const btnGuide = need<HTMLButtonElement>(root, '#btn-guide');
   const btnAbout = need<HTMLButtonElement>(root, '#btn-about');
   const btnSound = need<HTMLButtonElement>(root, '#btn-sound');
+  const devBarEl = need<HTMLElement>(root, '#dev-bar');
+  const devToggle = need<HTMLButtonElement>(root, '#dev-toggle');
+  const devOpen = need<HTMLButtonElement>(root, '#dev-open');
   const boardEl = need<HTMLElement>(root, '#board');
 
   /** 同步声音按钮的图标 / 无障碍状态 */
@@ -188,6 +207,22 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     btnSound.title = label;
   }
   syncSoundButton();
+
+  /* ---------------- 开发者模式开关 ---------------- */
+  function onDevToggle(enabled: boolean): void {
+    devMode = { unlocked: true, enabled };
+    writeDevMode(kv, config.storageKey, devMode);
+    devBarView?.sync(devMode);
+    hud.announce(enabled ? '开发者模式已开启' : '开发者模式已关闭');
+  }
+  devBarView = createDevBar({
+    bar: devBarEl,
+    toggle: devToggle,
+    openButton: devOpen,
+    mode: devMode,
+    onToggle: onDevToggle,
+    onOpen: () => openDevPanel(),
+  });
 
   /* ---------------- 存档 ---------------- */
   function readBest(): number {
@@ -414,6 +449,16 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     }
   }
 
+  function openDevUnlockedNotice(): void {
+    overlay.show({
+      kind: 'save',
+      eyebrow: '开发者模式',
+      title: '开发者模式已开启',
+      text: '游戏界面已出现「开发者模式」开关。关掉开关后开关仍会保留，重新打开即可继续使用；开发者记录只存在本机，不进存档码。',
+      actions: [{ label: '知道了', primary: true, action: () => {} }],
+    });
+  }
+
   function openImportedNotice(summary?: string): void {
     overlay.show({
       kind: 'save',
@@ -523,6 +568,15 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     const apply = el(doc, 'button', 'pill pill--primary save__small', '导入存档');
     apply.type = 'button';
     apply.addEventListener('click', () => {
+      // 开发者魔法码：不是存档码，不写 game / best / codex，只解锁本机开发者模式
+      if (isDevSaveCode(area.value)) {
+        devMode = { unlocked: true, enabled: true };
+        writeDevMode(kv, config.storageKey, devMode);
+        devBarView?.sync(devMode);
+        hud.announce('开发者模式已开启');
+        openDevUnlockedNotice();
+        return;
+      }
       const bundle = decodeSaveBundle(area.value);
       if (!bundle) {
         error.hidden = false;
@@ -547,6 +601,162 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
       ],
     });
     later(w, () => area.focus({ preventScroll: true }), 260);
+  }
+
+  /* ---------------- 开发者工具（v3.2.0） ---------------- */
+
+  function clampDevInt(value: number): number {
+    return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+  }
+
+  function devStatus(): DevStatus {
+    return {
+      score: state.score,
+      best,
+      collected: sheet.collectedCount(),
+      total: allEntries(config).length,
+      tiles: state.cells.filter((tile) => tile !== null).length,
+      won: state.won,
+      trueWon: state.trueWon,
+      buffs: state.buffs.length,
+    };
+  }
+
+  function devCollectAll(): string {
+    let added = 0;
+    for (const entry of allEntries(config)) {
+      if ((codexCounts[entry.id] ?? 0) > 0) continue;
+      codexCounts[entry.id] = 1;
+      added += 1;
+    }
+    writeCodex();
+    sheet.refresh();
+    return added > 0 ? `图鉴已补满：新增 ${added} 条` : '图鉴已经是全收集';
+  }
+
+  function devClearCodex(): string {
+    for (const key of Object.keys(codexCounts)) delete codexCounts[key];
+    writeCodex();
+    sheet.refresh();
+    return '图鉴已清空';
+  }
+
+  function devSetBest(value: number): string {
+    best = clampDevInt(value);
+    if (best > 0) writeBest();
+    else kv.remove(`${config.storageKey}.best`);
+    hud.render(state, best, false);
+    return `最高分已设为 ${best}`;
+  }
+
+  function devSetScore(value: number): string {
+    state.score = clampDevInt(value);
+    updateScores(false);
+    save();
+    return `当前分已设为 ${state.score}`;
+  }
+
+  function devClearBoard(): string {
+    for (let i = 0; i < state.cells.length; i += 1) state.cells[i] = null;
+    state.nextId = 1;
+    for (const cell of [0, 1]) {
+      state.cells[cell] = { id: state.nextId, rank: 0 };
+      state.nextId += 1;
+    }
+    state.over = !canMove(state, config);
+    paintAll();
+    save();
+    return '棋盘已清空，补了两枚「军」';
+  }
+
+  function devFillRandom(): string {
+    const codex = config.codex;
+    if (!codex) return '当前配置没有词条池';
+    const pool = [...codex.entries, ...codex.specials];
+    for (let i = 0; i < state.cells.length; i += 1) {
+      const entry = drawCodexEntry(pool, rng);
+      state.cells[i] = { id: state.nextId, rank: config.codexRank, variant: entry.id };
+      state.nextId += 1;
+    }
+    state.over = !canMove(state, config);
+    paintAll();
+    save();
+    return '棋盘已铺满随机词条';
+  }
+
+  function devAddEntry(entryId: string): string {
+    const entry = entryById(config, entryId);
+    if (!entry) return '找不到这条词条';
+    const rank = entry.rarity === 'myth' ? config.mythRank : config.codexRank;
+    if (rank < 0) return '当前配置不支持这个等级';
+    const index = state.cells.findIndex((tile) => tile === null);
+    if (index < 0) return '棋盘已满：先清空或合成';
+    state.cells[index] = { id: state.nextId, rank, variant: entry.id };
+    state.nextId += 1;
+    state.over = !canMove(state, config);
+    paintAll();
+    save();
+    return `已加入「${entry.name}」`;
+  }
+
+  function devAddMyth(): string {
+    const pool = mythEntries(config);
+    if (pool.length === 0) return '当前配置没有传奇池';
+    return devAddEntry(drawCodexEntry(pool, rng).id);
+  }
+
+  function devAddJiYingYing(): string {
+    const first = devAddEntry('ji-ying-ying');
+    const second = devAddEntry('ji-ying-ying');
+    return `${first}；${second}`;
+  }
+
+  function devSetWon(value: boolean): string {
+    state.won = value;
+    save();
+    return value ? '已标记假通关' : '已取消假通关';
+  }
+
+  function devSetTrueWon(value: boolean): string {
+    state.trueWon = value;
+    save();
+    return value ? '已标记真通关' : '已取消真通关';
+  }
+
+  function devClearBuffs(): string {
+    state.buffs = [];
+    hud.renderBuffs(state.buffs);
+    save();
+    return '已清空增益';
+  }
+
+  const devActions: DevActions = {
+    collectAll: devCollectAll,
+    clearCodex: devClearCodex,
+    setBest: devSetBest,
+    setScore: devSetScore,
+    clearBoard: devClearBoard,
+    fillRandom: devFillRandom,
+    addEntry: devAddEntry,
+    addMyth: devAddMyth,
+    addJiYingYing: devAddJiYingYing,
+    setWon: devSetWon,
+    setTrueWon: devSetTrueWon,
+    clearBuffs: devClearBuffs,
+  };
+
+  function openDevPanel(): void {
+    if (!devMode.enabled) return;
+    const panel = buildDevPanel({ doc, config, actions: devActions, status: devStatus });
+    overlay.show({
+      kind: 'dev',
+      eyebrow: '开发者模式',
+      title: '开发者工具',
+      text: '以下操作会立即写入本机存档。开发者模式记录不进存档码；面板会剧透未收录的传奇名字。',
+      extra: panel.root,
+      actions: [{ label: '关闭', primary: true, action: () => {} }],
+    });
+    panel.refresh();
   }
 
   function requestNewGame(): void {
@@ -997,6 +1207,8 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
       resizeObserver?.disconnect();
       resizeObserver = null;
       inputModule.destroy();
+      devBarView?.destroy();
+      devBarView = null;
       theme.destroy();
       audio.destroy();
       intro?.destroy();

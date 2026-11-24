@@ -86,7 +86,7 @@ check(
   html.includes('传奇词条 · 随机抽取') && html.includes('传奇 · 现世'),
   '缺少传奇抽取配方 / 现世文案',
 );
-check(html.includes('3.1.0'), '缺少 v3.1.0 版本号');
+check(html.includes('3.2.0'), '缺少 v3.2.0 版本号');
 check(
   html.includes('tile__aura') && html.includes('heart-rise'),
   '缺少稀有度光效 / 爱心粒子',
@@ -101,6 +101,15 @@ check(
   '缺少存档导出 / 导入入口或存档码',
 );
 // v2.4：关于里不再有在线玩按钮（GitHub Pages 已经是对外的正式入口）
+// v3.2：开发者模式（默认隐藏，存档导入框魔法码解锁）
+check(
+  html.includes('id="dev-bar"') &&
+    html.includes('id="dev-toggle"') &&
+    html.includes('开发者模式') &&
+    html.includes('JWC1.DEV-2048') &&
+    html.includes('图鉴全收集'),
+  '缺少开发者模式开关 / 工具面板',
+);
 check(!html.includes('github.io'), '关于里不应再有 GitHub Pages 在线玩链接');
 check(html.includes('id="intro"') && html.includes('id="intro-start"'), '缺少开场界面');
 check(html.includes('id="btn-sound"'), '缺少声音开关');

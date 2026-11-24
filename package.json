@@ -1,7 +1,7 @@
 {
   "name": "crazy-water-cube",
   "private": true,
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "疯狂水立方：水主题 2048 · 军 → 赢² → 水³ → Lec → OLD FIVE → 真通关了吗？",
   "type": "module",
   "scripts": {
@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "node scripts/build.mjs && node --test --no-warnings tests/*.test.ts",
     "verify": "npm run typecheck && npm test && node scripts/verify-dist.mjs",
-    "pack": "node scripts/pack.mjs"
+    "pack": "node scripts/pack.mjs",
+    "gift-save": "node scripts/gift-save.ts"
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",

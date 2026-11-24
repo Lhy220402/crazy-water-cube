@@ -2769,6 +2769,166 @@ button {
   color: var(--danger);
 }
 
+/* ---------- v3.2 开发者模式（默认隐藏；导入框魔法码解锁后出现） ---------- */
+
+.devbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px dashed var(--glass-edge);
+  border-radius: 999px;
+  background: var(--stat-bg);
+}
+
+.devbar[hidden] {
+  display: none;
+}
+
+.devbar__tag {
+  font-size: 11px;
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
+}
+
+.devbar__switch {
+  margin-left: auto;
+  min-width: 44px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--pill-edge);
+  background: var(--pill-bg);
+  color: var(--pill-ink);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.devbar__switch.is-on {
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 12px -4px var(--gold);
+}
+
+.devbar__open {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+.overlay[data-kind="dev"] .panel--overlay {
+  width: min(100%, 24rem);
+}
+
+.dev {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.dev__status {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.dev__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--glass-edge);
+}
+
+.dev__group:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.dev__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+}
+
+.dev__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.dev .pill {
+  flex: 0 0 auto;
+}
+
+.dev__btn {
+  padding: 6px 10px;
+  font-size: 11.5px;
+}
+
+.dev__field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dev__field-label {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.dev__input {
+  flex: 1 1 5rem;
+  min-width: 4.5rem;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-edge);
+  background: var(--stat-bg);
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.dev__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.dev__select {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-edge);
+  background: var(--stat-bg);
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.dev__msg {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--accent);
+}
+
+.dev__note {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
 /* ---------- 开场界面 ---------- */
 
 .intro {

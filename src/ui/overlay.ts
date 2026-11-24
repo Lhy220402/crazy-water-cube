@@ -15,7 +15,8 @@ export type OverlayKind =
   | 'lore'
   | 'about'
   | 'update'
-  | 'save';
+  | 'save'
+  | 'dev';
 
 export interface OverlayAction {
   label: string;

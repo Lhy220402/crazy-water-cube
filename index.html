@@ -98,6 +98,21 @@
             <div class="board__fx" id="fx" aria-hidden="true"></div>
           </div>
           <p class="hint" id="hint">滑动或按方向键 · 同级相碰合成 · 词条之间藏着特殊组合</p>
+          <!-- 开发者模式：默认隐藏，导入框输入魔法码解锁后才出现；开关状态持久化 -->
+          <div class="devbar" id="dev-bar" hidden aria-label="开发者模式">
+            <span class="devbar__tag">🛠 开发者模式</span>
+            <button
+              class="devbar__switch"
+              id="dev-toggle"
+              type="button"
+              role="switch"
+              aria-checked="false"
+              aria-label="开发者模式开关"
+            >关</button>
+            <button class="pill pill--ghost devbar__open" id="dev-open" type="button" hidden disabled>
+              开发者工具
+            </button>
+          </div>
         </section>
 
         <footer class="bar">
