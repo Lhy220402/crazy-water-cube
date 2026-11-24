@@ -17,6 +17,7 @@ import {
   createGame,
   deserialize,
   move as applyMove,
+  needsLegacyMythMigration,
   serialize,
   type Direction,
   type GameState,
@@ -216,11 +217,16 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     }
   }
 
-  function loadState(): GameState | null {
+  function loadState(): { state: GameState; migrated: boolean } | null {
     const raw = kv.get(config.storageKey);
     if (!raw) return null;
     try {
-      return deserialize(JSON.parse(raw), config);
+      const parsed: unknown = JSON.parse(raw);
+      // v3.0.2 旧档迁移：rank 6 上误标的 4 条旧传奇会在 deserialize 里随机换成正确传奇；
+      // 这里先判断是否需要回写，避免每次刷新都重新随机一次。
+      const migrated = needsLegacyMythMigration(parsed, config);
+      const state = deserialize(parsed, config, rng);
+      return state ? { state, migrated } : null;
     } catch {
       return null;
     }
@@ -726,10 +732,11 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
   w?.addEventListener('orientationchange', onResize);
 
   const restored = loadState();
-  state = restored ?? createGame(config, rng);
+  state = restored?.state ?? createGame(config, rng);
   paintAll();
   sheet.refresh();
-  if (!restored) save();
+  // 新局要写档；旧档做过传奇迁移时也要立刻回写，保证下次打开不再重新随机
+  if (!restored || restored.migrated) save();
 
   // 开场界面：每次打开页面出现一次，展示最高分 / 图鉴进度，点「开始合成」进入
   intro = createIntro({
@@ -751,7 +758,7 @@ export function createApp(root: HTMLElement, options: AppOptions = {}): AppApi {
     collected: sheet.collectedCount(),
     hasSave: restored !== null,
   });
-  if (restored?.over) {
+  if (restored?.state.over) {
     pendingGameOver = true;
     later(w, () => {
       // 开场界面还开着就先不弹，等玩家进入游戏时再弹；

@@ -21,7 +21,7 @@ import {
   pointsForRank,
   type GameConfig,
 } from './config.ts';
-import { drawCodexEntry, type CodexEntry } from './codex.ts';
+import { LEGACY_MISLABELED_MYTH_IDS, drawCodexEntry, type CodexEntry } from './codex.ts';
 import { matchMythRecipe, matchRecipe, specialProduct, type SpecialProduct } from './recipes.ts';
 import { buffMultiplier, cloneBuffs, parseBuffs, tickBuffs, type Buff } from './buffs.ts';
 
@@ -479,7 +479,24 @@ function isInt(value: unknown, min: number, max: number): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
 }
 
-export function deserialize(raw: unknown, config: GameConfig): GameState | null {
+/**
+ * 旧档是否需要「误标传奇」迁移：rank 6 上是否还躺着 v3.0.0 的 4 个旧 id。
+ * app 用它判断读档后要不要立刻回写，避免每次刷新都重新随机一次。
+ */
+export function needsLegacyMythMigration(raw: unknown, config: GameConfig): boolean {
+  if (!raw || typeof raw !== 'object' || config.mythRank < 0) return false;
+  const data = raw as Partial<SavedGame>;
+  if (data.size !== config.size || data.sig !== config.tiersSignature) return false;
+  if (!Array.isArray(data.ranks) || !Array.isArray(data.variants)) return false;
+  for (let i = 0; i < data.ranks.length; i += 1) {
+    if (data.ranks[i] !== config.mythRank) continue;
+    const variant = data.variants[i];
+    if (typeof variant === 'string' && LEGACY_MISLABELED_MYTH_IDS.includes(variant)) return true;
+  }
+  return false;
+}
+
+export function deserialize(raw: unknown, config: GameConfig, rng: Rng = Math.random): GameState | null {
   if (!raw || typeof raw !== 'object') return null;
   // 兼容 v1（无词条字段）、v2（无真通关/增益）与 v3
   const data = raw as Partial<Omit<SavedGame, 'v'>> & { v?: number };
@@ -504,8 +521,15 @@ export function deserialize(raw: unknown, config: GameConfig): GameState | null 
       if (!entry) return null;
       // 传奇 id 只能落在传奇级；普通词条 id 不能占传奇级
       if (isCodexRank(config, rank) && entry.rarity === 'myth') return null;
-      if (isMythRank(config, rank) && entry.rarity !== 'myth') return null;
-      cells[i] = { id: nextId, rank, variant };
+      let resolvedVariant = variant;
+      if (isMythRank(config, rank) && entry.rarity !== 'myth') {
+        // v3.0.2 旧档迁移：只修 v3.0.0 误标成传奇的 4 条，随机换成当前正确传奇。
+        // 其它普通 id 占传奇级仍按坏档处理，避免掩盖真正的数据问题。
+        const legacy = LEGACY_MISLABELED_MYTH_IDS.includes(variant);
+        if (!legacy || mythEntries(config).length === 0) return null;
+        resolvedVariant = drawMythEntry(config, rng).id;
+      }
+      cells[i] = { id: nextId, rank, variant: resolvedVariant };
     } else {
       cells[i] = { id: nextId, rank };
     }

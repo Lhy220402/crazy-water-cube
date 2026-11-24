@@ -1409,6 +1409,49 @@ test('v3.0.1 稀有度修正：煤灰 / 昭君 / 小风是传说、象郡是稀�
   h.close();
 });
 
+test('v3.0.2 旧档迁移：保留最高分 / 图鉴进度，只把 rank 6 上的旧传奇随机换掉', async () => {
+  const ranks = [6, 6, 5, null, ...EMPTY16.slice(4).map(() => null)];
+  const variants = ['meihui', 'yingtao', 'meihui', null, ...EMPTY16.slice(4).map(() => null)];
+  const h = await boot(
+    saved(ranks, {
+      variants,
+      score: 2048,
+      moves: 99,
+      won: true,
+      trueWon: true,
+      buffs: [{ id: 'ji-ying-ying', label: '记赢赢·长赢', mult: 2, movesLeft: -1 }],
+    }),
+    { meihui: 2, yingtao: 1, 'ji-ying-ying': 1 },
+    undefined,
+    { best: 4096, rng: () => 0.3 },
+  );
+  // 分数 / 步数 / 最高分 / 通关 / 增益都不动
+  assert.equal(h.app.state.score, 2048);
+  assert.equal(h.app.state.moves, 99);
+  assert.equal(h.app.state.won, true);
+  assert.equal(h.app.state.trueWon, true);
+  assert.equal(h.app.state.buffs.length, 1);
+  assert.equal(h.$('#best').textContent, '4096');
+  // 第一枚旧传奇 → 随机正确传奇（0.3 × 8 = 2.4 → 666）；已是正确传奇的不变；rank 5 的旧词条不动
+  const mythTiles = h.$('#tiles').querySelectorAll<HTMLElement>('.tile[data-rank="6"]');
+  assert.equal(mythTiles.length, 2);
+  assert.equal(mythTiles[0]!.dataset.entry, '666');
+  assert.equal(mythTiles[1]!.dataset.entry, 'yingtao');
+  const legacyNormal = h.$('#tiles').querySelector<HTMLElement>('.tile[data-rank="5"][data-entry="meihui"]');
+  assert.ok(legacyNormal, 'rank 5 的普通词条记录保持不动');
+  // 图鉴进度保留（含旧 id 记录，它们现在是合法的传说 / 稀有词条）
+  assert.equal(h.app.codex['meihui'], 2);
+  assert.equal(h.app.codex['yingtao'], 1);
+  assert.equal(h.app.codex['ji-ying-ying'], 1);
+  // 迁移结果立刻回写：下次打开不会重新随机
+  const raw = JSON.parse(h.win.localStorage.getItem('jun2048') ?? '{}');
+  assert.equal(raw.score, 2048);
+  assert.equal(raw.ranks[0], 6);
+  assert.equal(raw.variants[0], '666');
+  assert.equal(raw.variants[2], 'meihui');
+  h.close();
+});
+
 test('隋 / 李娜没有解释：首次收录不弹解释卡，图鉴卡片不显示说明', async () => {
   // rng=0 会抽到权重最高的「隋」
   const h = await boot(saved([4, 4, ...EMPTY16.slice(2)], { won: true }), undefined, undefined, {

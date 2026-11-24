@@ -86,7 +86,7 @@ check(
   html.includes('传奇词条 · 随机抽取') && html.includes('传奇 · 现世'),
   '缺少传奇抽取配方 / 现世文案',
 );
-check(html.includes('3.0.1'), '缺少 v3.0.1 版本号');
+check(html.includes('3.0.2'), '缺少 v3.0.2 版本号');
 check(
   html.includes('tile__aura') && html.includes('heart-rise'),
   '缺少稀有度光效 / 爱心粒子',

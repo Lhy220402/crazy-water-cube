@@ -145,6 +145,18 @@ export const MYTH_ENTRIES: readonly CodexEntry[] = [
   { id: 'chuncheng', name: '春橙', rarity: 'myth', weight: 1, hue: 18, hue2: 36 }, // 春橙
 ];
 
+/**
+ * v3.0.1 修正前误放进传奇池的 4 条 id（现在分别是传说 / 稀有）。
+ * 读旧档迁移时，只把 rank 6 上的这些 id 随机换成当前传奇池里的正确传奇；
+ * 其他位置（普通词条、图鉴收录）保持不动。
+ */
+export const LEGACY_MISLABELED_MYTH_IDS: readonly string[] = [
+  'meihui',
+  'zhaojun',
+  'xiangjun',
+  'xiaofeng',
+];
+
 /** 纯文本场景（无障碍、图鉴卡片、解释卡、配方列表）用的名字 */
 export function entryText(entry: CodexEntry): string {
   return entry.name;

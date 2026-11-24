@@ -4,9 +4,9 @@
 每次打开先看到「疯狂水立方」开场界面，点开始（或按 Enter / Space）进入棋局。
 合出 OLD FIVE 只是**假通关**——真正的通关门道，藏在词条之间，留给你自己发现。
 
-## 下载（v3.0.1）
+## 下载（v3.0.2）
 
-- **单文件版**：下载 `疯狂水立方.html`（约 147.7 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
+- **单文件版**：下载 `疯狂水立方.html`（约 148.3 KB）——微信转发给同学，点开就能玩；无需联网、无需安装，`file://` 直接可跑。
 - **在线版（GitHub Pages）**：[https://idealismo10.github.io/crazy-water-cube/](https://idealismo10.github.io/crazy-water-cube/)，内容与单文件版相同。
 - **发行版**：[GitHub Releases](https://github.com/idealismo10/crazy-water-cube/releases) · [Gitee 发行版](https://gitee.com/idealismo10/crazy-water-cube/releases)（含单文件版、源码包、玩法说明、SHA256 校验和）。
 - **源码**：发行版里的 `疯狂水立方-source.tar.gz`，或 `git clone` 本仓库；`npm install && npm run build` 重新打包。
@@ -77,8 +77,10 @@
   普通词条下方是独立的「传奇」分区（传奇未收录前同样只显示问号卡）。
   全部收齐后，进度条满格、标题显示「共 48 条」，下方出现「未完待续」。收录跨局累积，重新开局不清空，撤销不回退。
 - 撤销最多 20 步；最高分 / 棋局 / 图鉴自动存在浏览器本地，关掉再打开接着玩。
+- 从 v3.0.0 升级时，旧存档里被误标成传奇的方块会**随机替换**为当前正确的传奇；
+  最高分、分数、步数、通关、增益与图鉴收录（包括这 4 条现在合法的传说 / 稀有记录）都会保留。
 - **版本更新提示**：更新到新版本后第一次进入游戏会弹一次「版本已更新」，只显示版本号变化
-  （如 `v3.0.0 → v3.0.1`）；新玩家不弹，同一版本不会重复弹。记录存在 `jun2048.version`。
+  （如 `v3.0.1 → v3.0.2`）；新玩家不弹，同一版本不会重复弹。记录存在 `jun2048.version`。
 - 底栏「🔊 / 🔇」按钮开关合成音效与失败音效，偏好会被记住（`jun2048.sound`）；「◐」按钮切换外观
   （跟随系统 → 浅色 → 深色，记住偏好）。
 - **关于**：入口收在图鉴抽屉底部（低频功能，避免误触），内容是玩法简介 + Gitee / GitHub 两个仓库链接；
@@ -126,7 +128,7 @@ src/
   main.ts       入口
 index.html      页面骨架（含开场界面与内联占位）
 scripts/        build / dev / verify-dist / pack / audio / pages
-tests/          engine.test.ts（41）+ audio.test.ts（3）+ version.test.ts（3）+ ui.test.ts（52）
+tests/          engine.test.ts（43）+ audio.test.ts（3）+ version.test.ts（3）+ ui.test.ts（53）
 docs/           交接文档 / 新对话提示词 / 设计文档
 ```
 
@@ -136,7 +138,7 @@ docs/           交接文档 / 新对话提示词 / 设计文档
 npm install
 npm run build     # → dist/2048.html
 npm run dev       # 本地预览，手机同网络可访问
-npm run verify    # 类型检查 + 99 测试 + 单文件自检
+npm run verify    # 类型检查 + 102 测试 + 单文件自检
 npm run pack      # 发布到 /sdcard/Download/DSH-Go/
 npm run pages     # 单文件版发布到 GitHub Pages（gh-pages 分支）
 ```
@@ -204,4 +206,6 @@ npm run pages     # 单文件版发布到 GitHub Pages（gh-pages 分支）
 - v3.0.0 / v3.0.1 的传奇视觉 / 全屏动效只做了自动化结构验证，**没有做真机目视回归**。
 - v3.0.1 只修正词条稀有度与图鉴分区归属（煤灰 / 昭君 / 小风 → 传说，象郡 → 稀有），
   传奇池从 12 条缩到 8 条；机制、存档与音源未动。
+- v3.0.2 增加 v3.0.0 旧档迁移：只把旧存档 rank 6 上那 4 个误标传奇随机换成正确传奇，
+  最高分、分数、步数、通关、增益、图鉴收录都保留；迁移后立刻回写，之后不再变化。
 - 两个仓库已设为公开；GitHub Pages 在线版随版本刷新。

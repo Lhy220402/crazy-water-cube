@@ -11,6 +11,7 @@ import {
   createGame,
   deserialize,
   move,
+  needsLegacyMythMigration,
   serialize,
   type Direction,
   type GameState,
@@ -875,6 +876,75 @@ test('传奇池 8 条都能抽到（100 等分）', () => {
     [...seen].sort(),
     config.codex!.myths!.map((entry) => entry.id).sort(),
   );
+});
+
+test('v3.0.2 旧档迁移：rank 6 上误标的 4 条旧传奇随机换成正确传奇，其余不动', () => {
+  const config = createConfig();
+  const raw = {
+    v: 3,
+    size: 4,
+    sig: config.tiersSignature,
+    ranks: [6, 6, 5, 5, null, null, null, null, null, null, null, null, null, null, null, null],
+    variants: ['meihui', 'yingtao', 'meihui', 'xiangjun', null, null, null, null, null, null, null, null, null, null, null, null],
+    score: 1024,
+    moves: 88,
+    won: true,
+    trueWon: true,
+    buffs: [{ id: 'ji-ying-ying', label: '记赢赢·长赢', mult: 2, movesLeft: -1 }],
+  };
+  assert.equal(needsLegacyMythMigration(raw, config), true);
+  // 第 1 次迁移抽 0 → 传奇池第一条 🍒；yingtao 已正确不消耗 rng
+  const restored = deserialize(raw, config, fixedRng(0));
+  assert.ok(restored);
+  const tiles = restored.cells.filter((tile): tile is NonNullable<typeof tile> => tile !== null);
+  assert.equal(tiles.length, 4);
+  assert.equal(tiles[0]!.rank, 6);
+  assert.equal(tiles[0]!.variant, 'yingtao', '旧传奇应换成正确的传奇');
+  assert.equal(tiles[1]!.variant, 'yingtao', '已经是正确传奇的方块保持原样');
+  // rank 5 上的 meihui / xiangjun 现在是合法的普通词条，不能动
+  assert.equal(tiles[2]!.rank, 5);
+  assert.equal(tiles[2]!.variant, 'meihui');
+  assert.equal(tiles[3]!.rank, 5);
+  assert.equal(tiles[3]!.variant, 'xiangjun');
+  // 分数 / 步数 / 通关 / 增益全部保留
+  assert.equal(restored.score, 1024);
+  assert.equal(restored.moves, 88);
+  assert.equal(restored.won, true);
+  assert.equal(restored.trueWon, true);
+  assert.deepEqual(restored.buffs, raw.buffs);
+  // 回写后不再需要迁移
+  assert.equal(needsLegacyMythMigration(serialize(restored, config), config), false);
+});
+
+test('v3.0.2 旧档迁移：多枚旧传奇逐个随机替换；非旧 id 占传奇级仍判坏档', () => {
+  const config = createConfig();
+  const raw = {
+    v: 3,
+    size: 4,
+    sig: config.tiersSignature,
+    ranks: [6, 6, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    variants: ['meihui', 'xiaofeng', null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    score: 0,
+    moves: 0,
+    won: false,
+    trueWon: false,
+    buffs: [],
+  };
+  const sequence = [0, 0.3];
+  let index = 0;
+  const rng = (): number => sequence[Math.min(index++, sequence.length - 1)]!;
+  const restored = deserialize(raw, config, rng);
+  assert.ok(restored);
+  const myths = restored.cells
+    .filter((tile): tile is NonNullable<typeof tile> => tile !== null)
+    .map((tile) => tile.variant);
+  assert.deepEqual(myths, ['yingtao', '666'], '两枚旧传奇各随机一次');
+  // 不是那 4 条旧 id 的普通词条仍不能占 rank 6
+  assert.equal(
+    deserialize({ ...raw, variants: ['sui', 'xiaofeng', ...raw.variants.slice(2)] }, config),
+    null,
+  );
+  assert.equal(needsLegacyMythMigration({ ...raw, ranks: [5, 5, ...raw.ranks.slice(2)] }, config), false);
 });
 
 test('传奇存档：rank 6 + 传奇 id 往返一致；普通 id 占传奇级 / 传奇 id 占词条级判坏档', () => {
