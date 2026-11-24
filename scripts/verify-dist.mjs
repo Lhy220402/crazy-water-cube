@@ -69,7 +69,7 @@ check(
   html.includes('记会成') && html.includes('记了就会成'),
   '缺少 v2.5 的「记赢赢 + 会成 → 记会成」配方文案',
 );
-// v3.0：12 条传奇词条 + 记赢赢金虹 + 全屏现世弹层 + 图鉴传奇分区
+// v3.0：12 条新词条（8 传奇 + 3 传说 + 1 稀有）+ 记赢赢金虹 + 全屏现世弹层 + 图鉴传奇分区
 check(
   ['煤灰', '昭君', '象郡', '小风', '🍒', '假生', '666', '红鹰', '王雪地', '种树', '国晶', '春橙'].every(
     (name) => html.includes(name),
@@ -86,7 +86,7 @@ check(
   html.includes('传奇词条 · 随机抽取') && html.includes('传奇 · 现世'),
   '缺少传奇抽取配方 / 现世文案',
 );
-check(html.includes('3.0.0'), '缺少 v3.0.0 版本号');
+check(html.includes('3.0.1'), '缺少 v3.0.1 版本号');
 check(
   html.includes('tile__aura') && html.includes('heart-rise'),
   '缺少稀有度光效 / 爱心粒子',

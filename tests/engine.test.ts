@@ -280,8 +280,8 @@ test('任意两条词条都能合（稀有度不影响配对），结果全池�
     ],
     config,
   );
-  // 权重总和 61；0.45×61 = 27.45 落在「燕子」（27–29 区间）
-  const result = move(state, 'left', config, fixedRng(0.45));
+  // 权重总和 66；0.43×66 = 28.38 落在「燕子」（27–29 区间）
+  const result = move(state, 'left', config, fixedRng(0.43));
   assert.equal(result.moved, true);
   assert.equal(result.merges[0]!.rank, config.codexRank);
   assert.equal(result.codexDraws.length, 1);
@@ -290,10 +290,10 @@ test('任意两条词条都能合（稀有度不影响配对），结果全池�
   assert.equal(produced?.variant, 'yanzi');
 });
 
-test('词条按权重随机，允许重复，29 条都能抽到', () => {
+test('词条按权重随机，允许重复，33 条都能抽到', () => {
   const config = createConfig();
   const seen = new Map<string, number>();
-  for (let i = 0; i < 2000; i += 1) {
+  for (let i = 0; i < 2400; i += 1) {
     const state = board(
       [
         [4, 4, null, null],
@@ -326,16 +326,20 @@ test('词条按权重随机，允许重复，29 条都能抽到', () => {
     'jinshan',
     'junzhu',
     'li',
+    'meihui',
     'na',
     'neng',
     'sudailiao',
     'sui',
     'sui-ring',
     'weihai',
+    'xiangjun',
+    'xiaofeng',
     'xiaoming',
     'xiaoyu',
     'yanzi',
     'yu-zi',
+    'zhaojun',
     'zhaoyiming',
     'zuolun',
   ]);
@@ -405,19 +409,41 @@ test('特殊配方：Li + Na → 李娜（+128，×2/8步，和水军同一梯�
   assert.equal(followUp.merges[0]!.gained, 64);
 });
 
-test('图鉴规模与解释文案：随机池 29 + 特殊产物 7 + 传奇 12 = 48 条', () => {
+test('图鉴规模与解释文案：随机池 33 + 特殊产物 7 + 传奇 8 = 48 条', () => {
   const config = createConfig();
-  assert.equal(config.codex!.entries.length, 29);
+  assert.equal(config.codex!.entries.length, 33);
   assert.equal(config.codex!.specials.length, 7);
-  assert.equal(config.codex!.myths!.length, 12);
+  assert.equal(config.codex!.myths!.length, 8);
   assert.equal(config.mythRank, 6);
   const entries = allEntries(config);
   assert.equal(entries.length, 48);
+  // v3.0.1 修正：这三条是传说、象郡是稀有，全部回到普通抽取池
+  assert.equal(entryById(config, 'meihui')!.rarity, 'legend');
+  assert.equal(entryById(config, 'zhaojun')!.rarity, 'legend');
+  assert.equal(entryById(config, 'xiaofeng')!.rarity, 'legend');
+  assert.equal(entryById(config, 'xiangjun')!.rarity, 'rare');
+  for (const id of ['meihui', 'zhaojun', 'xiaofeng', 'xiangjun']) {
+    assert.ok(
+      config.codex!.entries.some((entry) => entry.id === id),
+      `${id} 应在普通抽取池`,
+    );
+    assert.equal(
+      config.codex!.myths!.some((entry) => entry.id === id),
+      false,
+      `${id} 不应在传奇池`,
+    );
+  }
   // 传奇池全部是 myth 稀有度、权重均匀（默认 1）、有自己的文案
   for (const entry of config.codex!.myths!) {
     assert.equal(entry.rarity, 'myth', `${entry.id} 应为传奇稀有度`);
     assert.equal(entry.weight ?? 1, 1, `${entry.id} 权重应均匀`);
   }
+  // 权重总和 = 61 + 2（象郡稀有）+ 1×3（三条传说）= 66
+  const weightTotal = config.codex!.entries.reduce(
+    (sum, entry) => sum + (entry.weight ?? 1),
+    0,
+  );
+  assert.equal(weightTotal, 66);
   // v2.4：隋 / 李娜 按用户要求去掉解释 —— 不写文案、UI 不弹解释卡
   assert.equal(LORE.sui, undefined);
   assert.equal(LORE.lina, undefined);
@@ -768,12 +794,12 @@ test('传奇机制：记赢赢 × 记赢赢 → 随机传奇（+512，rank 6，�
   const merge = result.merges[0]!;
   assert.equal(merge.rank, config.mythRank);
   assert.equal(merge.rank, 6);
-  assert.equal(merge.variant, 'meihui'); // 传奇池第一条
+  assert.equal(merge.variant, 'yingtao'); // 传奇池第一条
   assert.equal(merge.gained, 512);
   assert.equal(result.scoreGain, 512);
   assert.equal(result.codexDraws.length, 1, '传奇也是随机抽取');
-  assert.equal(result.codexDraws[0]!.entryId, 'meihui');
-  assert.equal(result.codexDraws[0]!.name, '煤灰');
+  assert.equal(result.codexDraws[0]!.entryId, 'yingtao');
+  assert.equal(result.codexDraws[0]!.name, '🍒');
   // 传奇不是假通关 / 真通关
   assert.equal(result.justWon, false);
   assert.equal(result.justTrueWon, false);
@@ -781,16 +807,16 @@ test('传奇机制：记赢赢 × 记赢赢 → 随机传奇（+512，rank 6，�
   // 没有增益（传奇本身不加 buff）
   assert.deepEqual(result.state.buffs, []);
   const produced = result.state.cells.find((tile) => tile?.rank === 6);
-  assert.equal(produced?.variant, 'meihui');
+  assert.equal(produced?.variant, 'yingtao');
 });
 
 test('传奇机制：传奇 × 传奇 再抽传奇；传奇不能和普通词条合', () => {
   const config = createConfig();
-  // 两枚传奇相撞：再随机抽一条传奇（0.5 × 12 = 6 → 第 7 条 666）
+  // 两枚传奇相撞：再随机抽一条传奇（0.3 × 8 = 2.4 → 第 3 条 666）
   const mythPair = move(
     board(
       [
-        [null, [6, 'meihui'], [6, 'zhaojun'], null],
+        [null, [6, 'yingtao'], [6, 'jiasheng'], null],
         [null, null, null, null],
         [null, null, null, null],
         [null, null, null, null],
@@ -799,7 +825,7 @@ test('传奇机制：传奇 × 传奇 再抽传奇；传奇不能和普通词条
     ),
     'left',
     config,
-    fixedRng(0.5),
+    fixedRng(0.3),
   );
   assert.equal(mythPair.merges.length, 1);
   assert.equal(mythPair.merges[0]!.rank, 6);
@@ -811,7 +837,7 @@ test('传奇机制：传奇 × 传奇 再抽传奇；传奇不能和普通词条
   const mixed = move(
     board(
       [
-        [null, [5, 'sui'], [6, 'meihui'], null],
+        [null, [5, 'sui'], [6, 'yingtao'], null],
         [null, null, null, null],
         [null, null, null, null],
         [null, null, null, null],
@@ -827,7 +853,7 @@ test('传奇机制：传奇 × 传奇 再抽传奇；传奇不能和普通词条
   assert.equal(mixed.codexDraws.length, 0);
 });
 
-test('传奇池 12 条都能抽到（100 等分）', () => {
+test('传奇池 8 条都能抽到（100 等分）', () => {
   const config = createConfig();
   const seen = new Set<string>();
   for (let i = 0; i < 2400; i += 1) {
@@ -858,7 +884,7 @@ test('传奇存档：rank 6 + 传奇 id 往返一致；普通 id 占传奇级 / 
     size: 4,
     sig: config.tiersSignature,
     ranks: [6, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-    variants: ['meihui', null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    variants: ['yingtao', null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
     score: 512,
     moves: 1,
     won: true,
@@ -869,7 +895,7 @@ test('传奇存档：rank 6 + 传奇 id 往返一致；普通 id 占传奇级 / 
   assert.ok(restored);
   const mythTile = restored.cells.find((tile) => tile !== null);
   assert.equal(mythTile?.rank, 6);
-  assert.equal(mythTile?.variant, 'meihui');
+  assert.equal(mythTile?.variant, 'yingtao');
   // 普通词条 id 占传奇级 → 坏档
   assert.equal(deserialize({ ...base, variants: ['sui', ...base.variants.slice(1)] }, config), null);
   // 传奇 id 占词条级 → 坏档
@@ -878,7 +904,7 @@ test('传奇存档：rank 6 + 传奇 id 往返一致；普通 id 占传奇级 / 
       {
         ...base,
         ranks: [5, ...base.ranks.slice(1)],
-        variants: ['meihui', ...base.variants.slice(1)],
+        variants: ['yingtao', ...base.variants.slice(1)],
       },
       config,
     ),

@@ -71,7 +71,7 @@ export interface CodexEntry {
 }
 
 /**
- * 随机词条池（29 条）。
+ * 随机词条池（33 条）。
  *
  * v2.4 配色原则：
  *   - 只取「水」的色域：湖蓝 / 青灰 / 雾蓝 / 靛蓝为主，局部用低饱和的梅粉、赭红、香槟金做语义点缀；
@@ -121,18 +121,20 @@ export const CODEX_ENTRIES: readonly CodexEntry[] = [
   { id: 'zuolun', name: '左轮', rarity: 'rare', weight: 2, hue: 218, hue2: 202 }, // 冷钢蓝
   { id: 'yu-zi', name: '鱼籽', rarity: 'rare', weight: 2, hue: 16, hue2: 30 }, // 鱼籽橙
   { id: 'he-si', name: '何思', rarity: 'rare', weight: 2, hue: 248, hue2: 232 }, // 雾沉思蓝
+
+  // v3.0.1 修正：按用户最初给的稀有度，这 4 条回到普通抽取池（不是传奇）
+  { id: 'meihui', name: '煤灰', rarity: 'legend', weight: 1, hue: 218, hue2: 200 }, // 冷灰
+  { id: 'zhaojun', name: '昭君', rarity: 'legend', weight: 1, hue: 350, hue2: 22 }, // 昭君红
+  { id: 'xiangjun', name: '象郡', rarity: 'rare', weight: 2, hue: 36, hue2: 24 }, // 旧铜
+  { id: 'xiaofeng', name: '小风', rarity: 'legend', weight: 1, hue: 190, hue2: 170 }, // 风青
 ];
 
 /**
- * 传奇词条池（12 条，v3.0）。不进上面的随机池，也不会从 OLD FIVE / 普通词条合成里抽到：
+ * 传奇词条池（8 条，v3.0.1）。不进上面的随机池，也不会从 OLD FIVE / 普通词条合成里抽到：
  * 唯一入口是「记赢赢 × 记赢赢」相撞后从这里随机抽一条。
  * 全部为 myth 稀有度、权重均匀（默认 1），图鉴里单独分区。
  */
 export const MYTH_ENTRIES: readonly CodexEntry[] = [
-  { id: 'meihui', name: '煤灰', rarity: 'myth', weight: 1, hue: 218, hue2: 200 }, // 冷灰
-  { id: 'zhaojun', name: '昭君', rarity: 'myth', weight: 1, hue: 350, hue2: 22 }, // 昭君红
-  { id: 'xiangjun', name: '象郡', rarity: 'myth', weight: 1, hue: 36, hue2: 24 }, // 旧铜
-  { id: 'xiaofeng', name: '小风', rarity: 'myth', weight: 1, hue: 190, hue2: 170 }, // 风青
   { id: 'yingtao', name: '🍒', rarity: 'myth', weight: 1, hue: 344, hue2: 352 }, // 樱桃
   { id: 'jiasheng', name: '假生', rarity: 'myth', weight: 1, hue: 42, hue2: 30 }, // 暖金
   { id: '666', name: '666', rarity: 'myth', weight: 1, hue: 28, hue2: 48 }, // 琥珀
